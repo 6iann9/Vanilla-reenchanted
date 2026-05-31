@@ -1,5 +1,9 @@
 package net.iann.vanillareenchanted;
 
+import net.iann.vanillareenchanted.registry.ModAttachments;
+import net.iann.vanillareenchanted.registry.ModBlocks;
+import net.iann.vanillareenchanted.registry.ModItems;
+import net.iann.vanillareenchanted.registry.ModMenus;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
@@ -41,6 +45,13 @@ public class VanillaReenchanted {
     // The constructor for the mod class is the first code that is run when your mod is loaded.
     // FML will recognize some parameter types like IEventBus or ModContainer and pass them in automatically.
     public VanillaReenchanted(IEventBus modEventBus, ModContainer modContainer) {
+        LOGGER.info("Loading Vanilla Reenchanted");
+
+        ModAttachments.register(modEventBus);
+        ModBlocks.register(modEventBus);
+        ModItems.register(modEventBus);
+        ModMenus.register(modEventBus);
+
         // Register the commonSetup method for modloading
         modEventBus.addListener(this::commonSetup);
 

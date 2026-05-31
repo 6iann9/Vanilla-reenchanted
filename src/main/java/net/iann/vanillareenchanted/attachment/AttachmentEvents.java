@@ -1,0 +1,21 @@
+package net.iann.vanillareenchanted.attachment;
+
+import net.iann.vanillareenchanted.VanillaReenchanted;
+import net.iann.vanillareenchanted.registry.ModAttachments;
+import net.minecraft.world.entity.player.Player;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+
+@EventBusSubscriber(modid = VanillaReenchanted.MODID)
+public class AttachmentEvents {
+
+    @SubscribeEvent
+    public static void onPlayerJoin(EntityJoinLevelEvent event) {
+        if (!(event.getEntity() instanceof Player player)) {
+            return;
+        }
+
+        player.getData(ModAttachments.PLAYER_KNOWLEDGE);
+    }
+}
