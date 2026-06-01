@@ -30,8 +30,36 @@ public class ResearchTableMenu extends AbstractContainerMenu {
     }
 
     @Override
-    public ItemStack quickMoveStack(Player player, int i) {
-        return null;
+    public ItemStack quickMoveStack(Player player, int index) {
+        ItemStack originalStack = ItemStack.EMPTY;
+
+        Slot clickedSlot = this.slots.get(index);
+
+        if (clickedSlot != null && clickedSlot.hasItem()) {
+            ItemStack clickedStack = clickedSlot.getItem();
+            originalStack = clickedStack.copy();
+
+            // Slot 0 = Research Table input slot
+            if (index == 0) {
+                // Move from research slot into player inventory
+                if (!this.moveItemStackTo(clickedStack, 1, 37, true)) {
+                    return ItemStack.EMPTY;
+                }
+            } else {
+                // Move from player inventory into research slot
+                if (!this.moveItemStackTo(clickedStack, 0, 1, false)) {
+                    return ItemStack.EMPTY;
+                }
+            }
+
+            if (clickedStack.isEmpty()) {
+                clickedSlot.set(ItemStack.EMPTY);
+            } else {
+                clickedSlot.setChanged();
+            }
+        }
+
+        return originalStack;
     }
 
     @Override
