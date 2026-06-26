@@ -19,6 +19,17 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
                     VanillaReenchanted.MODID,
                     "textures/gui/research_table.png"
             );
+    private static final int ENCHANTMENTS_PER_PAGE = 9;
+
+    private static final int ENCHANT_LIST_X = 34;
+    private static final int ENCHANT_LIST_Y = 63;
+    private static final int ENCHANT_LINE_HEIGHT = 10;
+
+    private static final int PREV_PAGE_X = 105;
+    private static final int NEXT_PAGE_X = 145;
+    private static final int PAGE_BUTTON_Y = 152;
+
+    private int enchantmentPage = 0;
 
     public ResearchTableScreen(ResearchTableMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
@@ -59,13 +70,19 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
     private void renderEnchantmentList(GuiGraphics guiGraphics) {
         List<Holder<Enchantment>> enchantments = this.menu.getVisibleEnchantments();
 
-        int startX = this.leftPos + 34;
-        int startY = this.topPos + 63;
+        int totalPages = getTotalPages(enchantments.size());
 
-        int lineHeight = 10;
-        int maxVisible = 9;
+        if (this.enchantmentPage >= totalPages) {
+            this.enchantmentPage = Math.max(0, totalPages - 1);
+        }
 
-        for (int i = 0; i < enchantments.size() && i < maxVisible; i++) {
+        int startIndex = this.enchantmentPage * ENCHANTMENTS_PER_PAGE;
+        int endIndex = Math.min(startIndex + ENCHANTMENTS_PER_PAGE, enchantments.size());
+
+        int startX = this.leftPos + ENCHANT_LIST_X;
+        int startY = this.topPos + ENCHANT_LIST_Y;
+
+        for (int i = startIndex; i < endIndex; i++) {
             Holder<Enchantment> enchantmentHolder = enchantments.get(i);
 
             String name = enchantmentHolder.unwrapKey()
@@ -75,15 +92,19 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
             Component text = Component.literal(formatEnchantName(name))
                     .withStyle(ChatFormatting.DARK_GRAY);
 
+            int lineIndex = i - startIndex;
+
             guiGraphics.drawString(
                     this.font,
                     text,
                     startX,
-                    startY + i * lineHeight,
+                    startY + lineIndex * ENCHANT_LINE_HEIGHT,
                     0x3F2A14,
                     false
             );
         }
+
+        renderPageControls(guiGraphics, totalPages);
     }
     private String formatEnchantName(String path) {
         String[] words = path.split("_");
@@ -100,5 +121,92 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
         }
 
         return result.toString().trim();
+    }
+    private void renderPageControls(GuiGraphics guiGraphics, int totalPages) {
+        if (totalPages <= 1) {
+            return;
+        }
+
+        int y = this.topPos + PAGE_BUTTON_Y;
+
+        Component prev = Component.literal("<");
+        Component next = Component.literal(">");
+        Component pageText = Component.literal((this.enchantmentPage + 1) + " / " + totalPages);
+
+        guiGraphics.drawString(
+                this.font,
+                prev,
+                this.leftPos + PREV_PAGE_X,
+                y,
+                0x3F2A14,
+                false
+        );
+
+        guiGraphics.drawString(
+                this.font,
+                pageText,
+                this.leftPos + 119,
+                y,
+                0x3F2A14,
+                false
+        );
+
+        guiGraphics.drawString(
+                this.font,
+                next,
+                this.leftPos + NEXT_PAGE_X,
+                y,
+                0x3F2A14,
+                false
+        );
+    }
+    private int getTotalPages(int enchantmentCount) {
+        if (enchantmentCount == 0) {
+            return 1;
+        }
+
+        return (int) Math.ceil(enchantmentCount / (double) ENCHANTMENTS_PER_PAGE);
+    }
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0 && handlePageButtonClick(mouseX, mouseY)) {
+            return true;
+        }
+
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+    private boolean handlePageButtonClick(double mouseX, double mouseY) {
+        List<Holder<Enchantment>> enchantments = this.menu.getVisibleEnchantments();
+        int totalPages = getTotalPages(enchantments.size());
+
+        if (totalPages <= 1) {
+            return false;
+        }
+
+        int prevX = this.leftPos + PREV_PAGE_X;
+        int nextX = this.leftPos + NEXT_PAGE_X;
+        int y = this.topPos + PAGE_BUTTON_Y;
+
+        if (isMouseOver(mouseX, mouseY, prevX, y, 10, 10)) {
+            if (this.enchantmentPage > 0) {
+                this.enchantmentPage--;
+            }
+            return true;
+        }
+
+        if (isMouseOver(mouseX, mouseY, nextX, y, 10, 10)) {
+            if (this.enchantmentPage < totalPages - 1) {
+                this.enchantmentPage++;
+            }
+            return true;
+        }
+
+        return false;
+    }
+    private boolean isMouseOver(double mouseX, double mouseY, int x, int y, int width, int height) {
+        return mouseX >= x
+                && mouseX < x + width
+                && mouseY >= y
+                && mouseY < y + height;
     }
 }
