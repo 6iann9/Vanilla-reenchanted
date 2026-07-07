@@ -142,6 +142,10 @@ public class ResearchTableMenu extends AbstractContainerMenu {
         }
     }
 
+    public ItemStack getResearchItem() {
+        return this.itemContainer.getItem(0);
+    }
+
     private void addPlayerInventory(Inventory inventory) {
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
@@ -207,13 +211,18 @@ public class ResearchTableMenu extends AbstractContainerMenu {
             return false;
         }
 
-        // For now: no books in the left slot.
-        // Later we will allow our custom encrypted book here.
+        // Later our encrypted book will also be allowed here.
         if (stack.is(Items.BOOK) || stack.is(Items.ENCHANTED_BOOK)) {
             return false;
         }
 
-        return stack.isEnchantable();
+        // Accept normal enchantable gear.
+        if (stack.isEnchantable()) {
+            return true;
+        }
+
+        // Also accept gear that already has enchantments.
+        return !stack.getEnchantments().isEmpty();
     }
 
     private boolean isPaymentItem(ItemStack stack) {
