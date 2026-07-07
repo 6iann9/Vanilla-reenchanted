@@ -2,7 +2,7 @@ package net.iann.vanillareenchanted.screen;
 
 import net.iann.vanillareenchanted.VanillaReenchanted;
 import net.iann.vanillareenchanted.menu.ResearchTableMenu;
-import net.minecraft.ChatFormatting;
+import net.iann.vanillareenchanted.registry.ModAttachments;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -10,32 +10,103 @@ import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
 
 import java.util.List;
 
 public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMenu> {
-    private static final ResourceLocation TEXTURE =
+
+    // -------------------------------------------------
+    // GUI SIZE
+    // Must match the size of research_table.png.
+    // -------------------------------------------------
+
+    private static final int GUI_WIDTH = 278;
+    private static final int GUI_HEIGHT = 278;
+
+    // -------------------------------------------------
+    // MAIN BACKGROUND TEXTURE
+    // -------------------------------------------------
+
+    private static final ResourceLocation BACKGROUND_TEXTURE =
             ResourceLocation.fromNamespaceAndPath(
                     VanillaReenchanted.MODID,
                     "textures/gui/research_table.png"
             );
 
-    private static final int ENCHANTMENTS_PER_PAGE = 9;
+    // -------------------------------------------------
+    // ENCHANTMENT LIST SETTINGS
+    // -------------------------------------------------
 
-    private static final int ENCHANT_LIST_X = 34;
-    private static final int ENCHANT_LIST_Y = 63;
-    private static final int ENCHANT_LINE_HEIGHT = 10;
+    private static final int ENCHANTMENTS_PER_PAGE = 6;
 
-    private static final int PREV_PAGE_X = 55;
-    private static final int NEXT_PAGE_X = PREV_PAGE_X + 35;
-    private static final int PAGE_BUTTON_Y = 156;
+    // Position of the first enchantment row inside the GUI texture.
+    private static final int ENCHANT_ROW_X = 35;
+    private static final int ENCHANT_ROW_Y = 57;
 
-    private static final int PAGE_TEXT_COLOR = 0xFFAD7757;
+    // Size of one row texture.
+    private static final int ENCHANT_ROW_WIDTH = 97;
+    private static final int ENCHANT_ROW_HEIGHT = 13;
+    private static final int ENCHANT_ROW_SPACING = 15;
 
-    private static final int ARROW_SIZE = 11;
+
+    // Text offsets inside one enchantment row.
+    private static final int ENCHANT_LEVEL_TEXT_X = 4;
+    private static final int ENCHANT_NAME_TEXT_X = 15;
+    private static final int ENCHANT_TEXT_Y = 3;
+    private static final int ENCHANT_NAME_RIGHT_PADDING = 2;
+
+    private static final int ENCHANT_NAME_MAX_WIDTH =
+            ENCHANT_ROW_WIDTH
+                    - ENCHANT_NAME_TEXT_X
+                    - ENCHANT_NAME_RIGHT_PADDING;
+
+    private static final int TEXT_COLOR = 0xFFAD7757;
+
+    private static final ResourceLocation ENCHANT_ROW_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(
+                    VanillaReenchanted.MODID,
+                    "textures/gui/enchantment_list_text_box.png"
+            );
+
+    private static final ResourceLocation ENCHANT_ROW_HOVER_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(
+                    VanillaReenchanted.MODID,
+                    "textures/gui/enchantment_list_text_box_outline.png"
+            );
+
+    // -------------------------------------------------
+    // SELECTED ENCHANTMENT ARROW
+    // -------------------------------------------------
+
+    private static final int SELECT_ARROW_WIDTH = 4;
+    private static final int SELECT_ARROW_HEIGHT = 8;
+
+    // Offset from the enchantment row.
+    private static final int SELECT_ARROW_X_OFFSET = -5;
+    private static final int SELECT_ARROW_Y_OFFSET = 3;
+
+    private static final ResourceLocation SELECT_ARROW_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(
+                    VanillaReenchanted.MODID,
+                    "textures/gui/select_arrow.png"
+            );
+
+    // -------------------------------------------------
+    // PAGE ARROWS
+    // -------------------------------------------------
+
+    private static final int PAGE_PREVIOUS_X = 55;
+    private static final int PAGE_NEXT_X = PAGE_PREVIOUS_X + 35;
+    private static final int PAGE_Y = 156;
+
+    private static final int PAGE_ARROW_SIZE = 11;
+
+    // Offset from the previous arrow to the page number.
+    private static final int PAGE_TEXT_X_OFFSET = 14;
+    private static final int PAGE_TEXT_Y_OFFSET = 2;
 
     private static final ResourceLocation ACTIVE_LEFT_ARROW =
             ResourceLocation.fromNamespaceAndPath(
@@ -61,104 +132,267 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
                     "textures/gui/buttons/inactive_right_arrow.png"
             );
 
-    private static final ResourceLocation ARROW_OUTLINE =
+    private static final ResourceLocation PAGE_ARROW_HOVER_TEXTURE =
             ResourceLocation.fromNamespaceAndPath(
                     VanillaReenchanted.MODID,
                     "textures/gui/buttons/arrow_outline.png"
             );
 
+    // -------------------------------------------------
+    // SCREEN STATE
+    // These values change while the player uses the menu.
+    // -------------------------------------------------
+
     private int enchantmentPage = 0;
 
-    public ResearchTableScreen(ResearchTableMenu menu, Inventory playerInventory, Component title) {
+    // Null means the player has not selected an enchantment yet.
+    private ResourceLocation selectedEnchantmentId = null;
+
+    public ResearchTableScreen(
+            ResearchTableMenu menu,
+            Inventory playerInventory,
+            Component title
+    ) {
         super(menu, playerInventory, title);
 
-        this.imageWidth = 278;
-        this.imageHeight = 278;
+        this.imageWidth = GUI_WIDTH;
+        this.imageHeight = GUI_HEIGHT;
     }
 
+    // Draws the large book/inventory background image.
     @Override
-    protected void renderBg(GuiGraphics guiGraphics, float partialTick, int mouseX, int mouseY) {
+    protected void renderBg(
+            GuiGraphics guiGraphics,
+            float partialTick,
+            int mouseX,
+            int mouseY
+    ) {
         guiGraphics.blit(
-                TEXTURE,
+                BACKGROUND_TEXTURE,
                 this.leftPos,
                 this.topPos,
                 0,
                 0,
-                this.imageWidth,
-                this.imageHeight,
-                this.imageWidth,
-                this.imageHeight
+                GUI_WIDTH,
+                GUI_HEIGHT,
+                GUI_WIDTH,
+                GUI_HEIGHT
         );
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void render(
+            GuiGraphics guiGraphics,
+            int mouseX,
+            int mouseY,
+            float partialTick
+    ) {
         this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
+
+        // Draw slots, items, and the base menu.
         super.render(guiGraphics, mouseX, mouseY, partialTick);
 
-        this.renderEnchantmentList(guiGraphics, mouseX, mouseY);
+        // Draw our custom enchantment rows and page buttons.
+        renderEnchantmentList(guiGraphics, mouseX, mouseY);
+
+        // Draw normal Minecraft item tooltips.
         this.renderTooltip(guiGraphics, mouseX, mouseY);
     }
 
+    // We do not have space for vanilla's default "Research Table" and "Inventory" labels.
     @Override
-    protected void renderLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        // Hide default title and inventory labels.
+    protected void renderLabels(
+            GuiGraphics guiGraphics,
+            int mouseX,
+            int mouseY
+    ) {
     }
 
-    private void renderEnchantmentList(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+    // -------------------------------------------------
+    // ENCHANTMENT LIST RENDERING
+    // -------------------------------------------------
+
+    private void renderEnchantmentList(
+            GuiGraphics guiGraphics,
+            int mouseX,
+            int mouseY
+    ) {
         List<Holder<Enchantment>> enchantments = this.menu.getVisibleEnchantments();
 
         int totalPages = getTotalPages(enchantments.size());
+        clampCurrentPage(totalPages);
 
-        if (this.enchantmentPage >= totalPages) {
-            this.enchantmentPage = Math.max(0, totalPages - 1);
-        }
+        int firstIndex = this.enchantmentPage * ENCHANTMENTS_PER_PAGE;
+        int lastIndex = Math.min(firstIndex + ENCHANTMENTS_PER_PAGE, enchantments.size());
 
-        int startIndex = this.enchantmentPage * ENCHANTMENTS_PER_PAGE;
-        int endIndex = Math.min(startIndex + ENCHANTMENTS_PER_PAGE, enchantments.size());
+        int rowX = this.leftPos + ENCHANT_ROW_X;
 
-        int startX = this.leftPos + ENCHANT_LIST_X;
-        int startY = this.topPos + ENCHANT_LIST_Y;
+        for (int enchantmentIndex = firstIndex; enchantmentIndex < lastIndex; enchantmentIndex++) {
+            Holder<Enchantment> enchantmentHolder = enchantments.get(enchantmentIndex);
 
-        for (int i = startIndex; i < endIndex; i++) {
-            Holder<Enchantment> enchantmentHolder = enchantments.get(i);
+            ResourceLocation enchantmentId = getEnchantmentId(enchantmentHolder);
 
-            String name = enchantmentHolder.unwrapKey()
-                    .map(key -> key.location().getPath())
-                    .orElse("unknown");
+            if (enchantmentId == null) {
+                continue;
+            }
 
-            Component text = Component.literal(formatEnchantName(name))
-                    .withStyle(ChatFormatting.DARK_GRAY);
+            int rowIndexOnPage = enchantmentIndex - firstIndex;
+            int rowY = this.topPos
+                    + ENCHANT_ROW_Y
+                    + rowIndexOnPage * ENCHANT_ROW_SPACING;
 
-            int lineIndex = i - startIndex;
+            boolean isHovered = isMouseOver(
+                    mouseX,
+                    mouseY,
+                    rowX,
+                    rowY,
+                    ENCHANT_ROW_WIDTH,
+                    ENCHANT_ROW_HEIGHT
+            );
 
-            guiGraphics.drawString(
-                    this.font,
-                    text,
-                    startX,
-                    startY + lineIndex * ENCHANT_LINE_HEIGHT,
-                    0x3F2A14,
-                    false
+            boolean isSelected = enchantmentId.equals(this.selectedEnchantmentId);
+
+            renderEnchantmentRowBackground(
+                    guiGraphics,
+                    rowX,
+                    rowY,
+                    isHovered,
+                    isSelected
+            );
+
+            int displayedLevel = getDisplayedEnchantmentLevel(enchantmentHolder);
+
+            renderEnchantmentRowText(
+                    guiGraphics,
+                    rowX,
+                    rowY,
+                    enchantmentHolder,
+                    displayedLevel
             );
         }
 
         renderPageControls(guiGraphics, totalPages, mouseX, mouseY);
     }
 
-    private String formatEnchantName(String path) {
-        String[] words = path.split("_");
-        StringBuilder result = new StringBuilder();
+    private void renderEnchantmentRowBackground(
+            GuiGraphics guiGraphics,
+            int rowX,
+            int rowY,
+            boolean isHovered,
+            boolean isSelected
+    ) {
+        // Normal paper row.
+        guiGraphics.blit(
+                ENCHANT_ROW_TEXTURE,
+                rowX,
+                rowY,
+                0,
+                0,
+                ENCHANT_ROW_WIDTH,
+                ENCHANT_ROW_HEIGHT,
+                ENCHANT_ROW_WIDTH,
+                ENCHANT_ROW_HEIGHT
+        );
 
-        for (String word : words) {
-            if (!word.isEmpty()) {
-                result.append(Character.toUpperCase(word.charAt(0)))
-                        .append(word.substring(1))
-                        .append(" ");
-            }
+        // Hover border appears over the normal row.
+        if (isHovered) {
+            guiGraphics.blit(
+                    ENCHANT_ROW_HOVER_TEXTURE,
+                    rowX,
+                    rowY,
+                    0,
+                    0,
+                    ENCHANT_ROW_WIDTH,
+                    ENCHANT_ROW_HEIGHT,
+                    ENCHANT_ROW_WIDTH,
+                    ENCHANT_ROW_HEIGHT
+            );
         }
 
-        return result.toString().trim();
+        // Selection arrow appears just left of the selected row.
+        if (isSelected) {
+            guiGraphics.blit(
+                    SELECT_ARROW_TEXTURE,
+                    rowX + SELECT_ARROW_X_OFFSET,
+                    rowY + SELECT_ARROW_Y_OFFSET,
+                    0,
+                    0,
+                    SELECT_ARROW_WIDTH,
+                    SELECT_ARROW_HEIGHT,
+                    SELECT_ARROW_WIDTH,
+                    SELECT_ARROW_HEIGHT
+            );
+        }
     }
+
+    private void renderEnchantmentRowText(
+            GuiGraphics guiGraphics,
+            int rowX,
+            int rowY,
+            Holder<Enchantment> enchantmentHolder,
+            int level
+    ) {
+        Component levelText = Component.literal(String.valueOf(level));
+
+        Component fullEnchantmentName = Component.literal(
+                enchantmentHolder.value().description().getString()
+        );
+
+        Component enchantmentName = shortenTextToFit(
+                fullEnchantmentName,
+                ENCHANT_NAME_MAX_WIDTH
+        );
+
+        guiGraphics.drawString(
+                this.font,
+                levelText,
+                rowX + ENCHANT_LEVEL_TEXT_X,
+                rowY + ENCHANT_TEXT_Y,
+                TEXT_COLOR,
+                false
+        );
+
+        guiGraphics.drawString(
+                this.font,
+                enchantmentName,
+                rowX + ENCHANT_NAME_TEXT_X,
+                rowY + ENCHANT_TEXT_Y,
+                TEXT_COLOR,
+                false
+        );
+    }
+
+    // When no item is inserted: show player research level.
+    // When an item is inserted: show the enchantment level on that item.
+    private int getDisplayedEnchantmentLevel(
+            Holder<Enchantment> enchantmentHolder
+    ) {
+        ItemStack researchItem = this.menu.getResearchItem();
+
+        if (!researchItem.isEmpty()) {
+            return researchItem.getEnchantmentLevel(enchantmentHolder);
+        }
+
+        Minecraft minecraft = Minecraft.getInstance();
+
+        if (minecraft.player == null) {
+            return 0;
+        }
+
+        ResourceLocation enchantmentId = getEnchantmentId(enchantmentHolder);
+
+        if (enchantmentId == null) {
+            return 0;
+        }
+
+        return minecraft.player
+                .getData(ModAttachments.PLAYER_KNOWLEDGE)
+                .getLevel(enchantmentId);
+    }
+
+    // -------------------------------------------------
+    // PAGE BUTTONS
+    // -------------------------------------------------
 
     private void renderPageControls(
             GuiGraphics guiGraphics,
@@ -170,138 +404,143 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
             return;
         }
 
-        int leftArrowX = this.leftPos + PREV_PAGE_X;
-        int rightArrowX = this.leftPos + NEXT_PAGE_X;
-        int arrowY = this.topPos + PAGE_BUTTON_Y;
+        int previousArrowX = this.leftPos + PAGE_PREVIOUS_X;
+        int nextArrowX = this.leftPos + PAGE_NEXT_X;
+        int arrowY = this.topPos + PAGE_Y;
 
         boolean canGoPrevious = this.enchantmentPage > 0;
         boolean canGoNext = this.enchantmentPage < totalPages - 1;
 
-        boolean hoveringPrevious = isMouseOver(
+        boolean previousHovered = isMouseOver(
                 mouseX,
                 mouseY,
-                leftArrowX,
+                previousArrowX,
                 arrowY,
-                ARROW_SIZE,
-                ARROW_SIZE
+                PAGE_ARROW_SIZE,
+                PAGE_ARROW_SIZE
         );
 
-        boolean hoveringNext = isMouseOver(
+        boolean nextHovered = isMouseOver(
                 mouseX,
                 mouseY,
-                rightArrowX,
+                nextArrowX,
                 arrowY,
-                ARROW_SIZE,
-                ARROW_SIZE
+                PAGE_ARROW_SIZE,
+                PAGE_ARROW_SIZE
         );
 
-        ResourceLocation leftTexture = canGoPrevious
-                ? ACTIVE_LEFT_ARROW
-                : INACTIVE_LEFT_ARROW;
-
-        ResourceLocation rightTexture = canGoNext
-                ? ACTIVE_RIGHT_ARROW
-                : INACTIVE_RIGHT_ARROW;
-
-        guiGraphics.blit(
-                leftTexture,
-                leftArrowX,
+        renderPageArrow(
+                guiGraphics,
+                previousArrowX,
                 arrowY,
-                0,
-                0,
-                ARROW_SIZE,
-                ARROW_SIZE,
-                ARROW_SIZE,
-                ARROW_SIZE
+                canGoPrevious ? ACTIVE_LEFT_ARROW : INACTIVE_LEFT_ARROW,
+                canGoPrevious && previousHovered
         );
 
-        guiGraphics.blit(
-                rightTexture,
-                rightArrowX,
+        renderPageArrow(
+                guiGraphics,
+                nextArrowX,
                 arrowY,
-                0,
-                0,
-                ARROW_SIZE,
-                ARROW_SIZE,
-                ARROW_SIZE,
-                ARROW_SIZE
+                canGoNext ? ACTIVE_RIGHT_ARROW : INACTIVE_RIGHT_ARROW,
+                canGoNext && nextHovered
         );
-
-        if (canGoPrevious && hoveringPrevious) {
-            guiGraphics.blit(
-                    ARROW_OUTLINE,
-                    leftArrowX,
-                    arrowY,
-                    0,
-                    0,
-                    ARROW_SIZE,
-                    ARROW_SIZE,
-                    ARROW_SIZE,
-                    ARROW_SIZE
-            );
-        }
-
-        if (canGoNext && hoveringNext) {
-            guiGraphics.blit(
-                    ARROW_OUTLINE,
-                    rightArrowX,
-                    arrowY,
-                    0,
-                    0,
-                    ARROW_SIZE,
-                    ARROW_SIZE,
-                    ARROW_SIZE,
-                    ARROW_SIZE
-            );
-        }
 
         Component pageText = Component.literal(
                 (this.enchantmentPage + 1) + "/" + totalPages
         );
 
-        int pageTextX = this.leftPos + PREV_PAGE_X + 14;
-        int pageTextY = arrowY + 2;
-
         guiGraphics.drawString(
                 this.font,
                 pageText,
-                pageTextX,
-                pageTextY,
-                PAGE_TEXT_COLOR,
+                previousArrowX + PAGE_TEXT_X_OFFSET,
+                arrowY + PAGE_TEXT_Y_OFFSET,
+                TEXT_COLOR,
                 false
         );
     }
 
-    private int getTotalPages(int enchantmentCount) {
-        if (enchantmentCount == 0) {
-            return 1;
-        }
+    private void renderPageArrow(
+            GuiGraphics guiGraphics,
+            int x,
+            int y,
+            ResourceLocation arrowTexture,
+            boolean showHoverOutline
+    ) {
+        guiGraphics.blit(
+                arrowTexture,
+                x,
+                y,
+                0,
+                0,
+                PAGE_ARROW_SIZE,
+                PAGE_ARROW_SIZE,
+                PAGE_ARROW_SIZE,
+                PAGE_ARROW_SIZE
+        );
 
-        return (int) Math.ceil(enchantmentCount / (double) ENCHANTMENTS_PER_PAGE);
+        if (showHoverOutline) {
+            guiGraphics.blit(
+                    PAGE_ARROW_HOVER_TEXTURE,
+                    x,
+                    y,
+                    0,
+                    0,
+                    PAGE_ARROW_SIZE,
+                    PAGE_ARROW_SIZE,
+                    PAGE_ARROW_SIZE,
+                    PAGE_ARROW_SIZE
+            );
+        }
     }
 
+    // -------------------------------------------------
+    // CLICK HANDLING
+    // -------------------------------------------------
+
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0 && handlePageButtonClick(mouseX, mouseY)) {
-            return true;
+    public boolean mouseClicked(
+            double mouseX,
+            double mouseY,
+            int button
+    ) {
+        // Only left mouse clicks interact with our UI controls.
+        if (button == 0) {
+            if (handlePageButtonClick(mouseX, mouseY)) {
+                return true;
+            }
+
+            if (handleEnchantmentRowClick(mouseX, mouseY)) {
+                return true;
+            }
         }
 
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
-    private boolean handlePageButtonClick(double mouseX, double mouseY) {
-        List<Holder<Enchantment>> enchantments = this.menu.getVisibleEnchantments();
-        int totalPages = getTotalPages(enchantments.size());
+    private boolean handlePageButtonClick(
+            double mouseX,
+            double mouseY
+    ) {
+        int totalPages = getTotalPages(
+                this.menu.getVisibleEnchantments().size()
+        );
 
         if (totalPages <= 1) {
             return false;
         }
 
-        int prevX = this.leftPos + PREV_PAGE_X;
-        int nextX = this.leftPos + NEXT_PAGE_X;
-        int y = this.topPos + PAGE_BUTTON_Y;
+        int previousArrowX = this.leftPos + PAGE_PREVIOUS_X;
+        int nextArrowX = this.leftPos + PAGE_NEXT_X;
+        int arrowY = this.topPos + PAGE_Y;
 
-        if (isMouseOver(mouseX, mouseY, prevX, y, ARROW_SIZE, ARROW_SIZE)) {
+        if (isMouseOver(
+                mouseX,
+                mouseY,
+                previousArrowX,
+                arrowY,
+                PAGE_ARROW_SIZE,
+                PAGE_ARROW_SIZE
+        )) {
             if (this.enchantmentPage > 0) {
                 this.enchantmentPage--;
                 playButtonClickSound();
@@ -310,7 +549,14 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
             return true;
         }
 
-        if (isMouseOver(mouseX, mouseY, nextX, y, ARROW_SIZE, ARROW_SIZE)) {
+        if (isMouseOver(
+                mouseX,
+                mouseY,
+                nextArrowX,
+                arrowY,
+                PAGE_ARROW_SIZE,
+                PAGE_ARROW_SIZE
+        )) {
             if (this.enchantmentPage < totalPages - 1) {
                 this.enchantmentPage++;
                 playButtonClickSound();
@@ -320,6 +566,98 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
         }
 
         return false;
+    }
+
+    private boolean handleEnchantmentRowClick(
+            double mouseX,
+            double mouseY
+    ) {
+        List<Holder<Enchantment>> enchantments = this.menu.getVisibleEnchantments();
+
+        int firstIndex = this.enchantmentPage * ENCHANTMENTS_PER_PAGE;
+        int lastIndex = Math.min(firstIndex + ENCHANTMENTS_PER_PAGE, enchantments.size());
+
+        int rowX = this.leftPos + ENCHANT_ROW_X;
+
+        for (int enchantmentIndex = firstIndex; enchantmentIndex < lastIndex; enchantmentIndex++) {
+            int rowIndexOnPage = enchantmentIndex - firstIndex;
+
+            int rowY = this.topPos
+                    + ENCHANT_ROW_Y
+                    + rowIndexOnPage * ENCHANT_ROW_SPACING;
+
+            if (!isMouseOver(
+                    mouseX,
+                    mouseY,
+                    rowX,
+                    rowY,
+                    ENCHANT_ROW_WIDTH,
+                    ENCHANT_ROW_HEIGHT
+            )) {
+                continue;
+            }
+
+            ResourceLocation enchantmentId = getEnchantmentId(
+                    enchantments.get(enchantmentIndex)
+            );
+
+            if (enchantmentId != null) {
+                this.selectedEnchantmentId = enchantmentId;
+                playButtonClickSound();
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    // -------------------------------------------------
+    // SMALL UTILITY METHODS
+    // -------------------------------------------------
+
+    private void clampCurrentPage(int totalPages) {
+        if (this.enchantmentPage >= totalPages) {
+            this.enchantmentPage = Math.max(0, totalPages - 1);
+        }
+    }
+
+    private int getTotalPages(int enchantmentCount) {
+        if (enchantmentCount <= 0) {
+            return 1;
+        }
+
+        return (int) Math.ceil(
+                enchantmentCount / (double) ENCHANTMENTS_PER_PAGE
+        );
+    }
+
+    private ResourceLocation getEnchantmentId(
+            Holder<Enchantment> enchantmentHolder
+    ) {
+        return enchantmentHolder.unwrapKey()
+                .map(key -> key.location())
+                .orElse(null);
+    }
+
+    private String formatEnchantName(String enchantmentPath) {
+        String[] words = enchantmentPath.split("_");
+        StringBuilder formattedName = new StringBuilder();
+
+        for (String word : words) {
+            if (word.isEmpty()) {
+                continue;
+            }
+
+            formattedName.append(
+                    Character.toUpperCase(word.charAt(0))
+            );
+
+            formattedName.append(word.substring(1));
+            formattedName.append(" ");
+        }
+
+        return formattedName.toString().trim();
     }
 
     private void playButtonClickSound() {
@@ -346,5 +684,29 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
                 && mouseX < x + width
                 && mouseY >= y
                 && mouseY < y + height;
+    }
+    private Component shortenTextToFit(Component text, int maxWidth) {
+        String fullText = text.getString();
+
+        // It already fits, so keep it unchanged.
+        if (this.font.width(fullText) <= maxWidth) {
+            return Component.literal(fullText);
+        }
+
+        String dots = ".";
+        int availableWidth = maxWidth - this.font.width(dots);
+
+        String shortenedText = fullText;
+
+        while (!shortenedText.isEmpty()
+                && this.font.width(shortenedText) > availableWidth) {
+
+            shortenedText = shortenedText.substring(
+                    0,
+                    shortenedText.length() - 1
+            );
+        }
+
+        return Component.literal(shortenedText + dots);
     }
 }
