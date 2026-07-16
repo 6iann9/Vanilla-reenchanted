@@ -43,7 +43,7 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
     private static final int ENCHANTMENTS_PER_PAGE = 6;
 
     // Position of the first enchantment row inside the GUI texture.
-    private static final int ENCHANT_ROW_X = 32;
+    private static final int ENCHANT_ROW_X = 35;
     private static final int ENCHANT_ROW_Y = 57;
 
     // Size of one row texture.
