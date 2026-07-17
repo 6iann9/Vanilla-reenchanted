@@ -3,6 +3,7 @@ package net.iann.vanillareenchanted.command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.iann.vanillareenchanted.enchantment.PlayerKnowledgeData;
+import net.iann.vanillareenchanted.network.KnowledgeSync;
 import net.iann.vanillareenchanted.registry.ModAttachments;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -37,25 +38,43 @@ public class VRCommands {
         PlayerKnowledgeData knowledge = player.getData(ModAttachments.PLAYER_KNOWLEDGE);
 
         if (knowledge.getAll().isEmpty()) {
-            source.sendSuccess(() -> net.minecraft.network.chat.Component.literal("No enchantment knowledge unlocked."), false);
+            source.sendSuccess(
+                    () -> net.minecraft.network.chat.Component.literal("No enchantment knowledge unlocked."),
+                    false
+            );
+
             return 1;
         }
 
         knowledge.getAll().forEach((id, level) -> {
-            source.sendSuccess(() -> net.minecraft.network.chat.Component.literal(id + " -> " + level), false);
+            source.sendSuccess(
+                    () -> net.minecraft.network.chat.Component.literal(id + " -> " + level),
+                    false
+            );
         });
 
         return 1;
     }
 
-    private static int unlock(CommandSourceStack source, ResourceLocation enchantmentId, int level) {
+    private static int unlock(
+            CommandSourceStack source,
+            ResourceLocation enchantmentId,
+            int level
+    ) {
         ServerPlayer player = source.getPlayer();
 
         PlayerKnowledgeData knowledge = player.getData(ModAttachments.PLAYER_KNOWLEDGE);
         knowledge.setLevel(enchantmentId, level);
 
+        // Important:
+        // The command changes the SERVER copy of the attachment.
+        // This sends the updated data to the CLIENT so the GUI can display it.
+        KnowledgeSync.sendToClient(player);
+
         source.sendSuccess(
-                () -> net.minecraft.network.chat.Component.literal("Unlocked " + enchantmentId + " level " + level),
+                () -> net.minecraft.network.chat.Component.literal(
+                        "Unlocked " + enchantmentId + " level " + level
+                ),
                 false
         );
 

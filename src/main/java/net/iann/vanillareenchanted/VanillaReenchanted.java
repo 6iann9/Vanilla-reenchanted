@@ -1,5 +1,6 @@
 package net.iann.vanillareenchanted;
 
+import net.iann.vanillareenchanted.network.NetworkEvents;
 import net.iann.vanillareenchanted.registry.ModAttachments;
 import net.iann.vanillareenchanted.registry.ModBlocks;
 import net.iann.vanillareenchanted.registry.ModItems;
@@ -51,6 +52,8 @@ public class VanillaReenchanted {
         ModBlocks.register(modEventBus);
         ModItems.register(modEventBus);
         ModMenus.register(modEventBus);
+
+        modEventBus.addListener(NetworkEvents::registerPayloads);
 
         // Register the commonSetup method for modloading
         modEventBus.addListener(this::commonSetup);
