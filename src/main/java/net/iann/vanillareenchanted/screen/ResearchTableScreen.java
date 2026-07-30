@@ -43,8 +43,8 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
     private static final int ENCHANTMENTS_PER_PAGE = 6;
 
     // Position of the first enchantment row inside the GUI texture.
-    private static final int ENCHANT_ROW_X = 34;
-    private static final int ENCHANT_ROW_Y = 60;
+    private static final int ENCHANT_ROW_X = 33;
+    private static final int ENCHANT_ROW_Y = 63;
 
     // Size of one row texture.
     private static final int ENCHANT_ROW_WIDTH = 97;
@@ -63,7 +63,7 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
                     - ENCHANT_NAME_TEXT_X
                     - ENCHANT_NAME_RIGHT_PADDING;
 
-    private static final int TEXT_COLOR = 0xFFAD7757;
+    private static final int TEXT_COLOR = 0xFFC79D7D;
 
     private static final ResourceLocation ENCHANT_ROW_TEXTURE =
             ResourceLocation.fromNamespaceAndPath(
