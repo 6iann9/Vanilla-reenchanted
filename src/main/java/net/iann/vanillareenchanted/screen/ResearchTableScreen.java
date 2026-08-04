@@ -44,7 +44,7 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
 
     // Position of the first enchantment row inside the GUI texture.
     private static final int ENCHANT_ROW_X = 33;
-    private static final int ENCHANT_ROW_Y = 63;
+    private static final int ENCHANT_ROW_Y = 60;
 
     // Size of one row texture.
     private static final int ENCHANT_ROW_WIDTH = 97;
@@ -63,7 +63,7 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
                     - ENCHANT_NAME_TEXT_X
                     - ENCHANT_NAME_RIGHT_PADDING;
 
-    private static final int TEXT_COLOR = 0xFFC79D7D;
+    private static final int TEXT_COLOR = 0xFFCCA886;
 
     private static final ResourceLocation ENCHANT_ROW_TEXTURE =
             ResourceLocation.fromNamespaceAndPath(
@@ -98,14 +98,14 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
     // PAGE ARROWS
     // -------------------------------------------------
 
-    private static final int PAGE_PREVIOUS_X = 55;
-    private static final int PAGE_NEXT_X = PAGE_PREVIOUS_X + 35;
+    private static final int PAGE_PREVIOUS_X = 58;
+    private static final int PAGE_NEXT_X = PAGE_PREVIOUS_X + 33;
     private static final int PAGE_Y = 156;
 
     private static final int PAGE_ARROW_SIZE = 11;
 
     // Offset from the previous arrow to the page number.
-    private static final int PAGE_TEXT_X_OFFSET = 14;
+    private static final int PAGE_TEXT_X_OFFSET = 13;
     private static final int PAGE_TEXT_Y_OFFSET = 2;
 
     private static final ResourceLocation ACTIVE_LEFT_ARROW =
