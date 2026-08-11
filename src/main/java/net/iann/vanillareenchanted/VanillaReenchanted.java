@@ -1,5 +1,6 @@
 package net.iann.vanillareenchanted;
 
+import net.iann.vanillareenchanted.config.VRConfig;
 import net.iann.vanillareenchanted.network.NetworkEvents;
 import net.iann.vanillareenchanted.registry.ModAttachments;
 import net.iann.vanillareenchanted.registry.ModBlocks;
@@ -53,22 +54,14 @@ public class VanillaReenchanted {
         ModItems.register(modEventBus);
         ModMenus.register(modEventBus);
 
-        modEventBus.addListener(NetworkEvents::registerPayloads);
+        modContainer.registerConfig(ModConfig.Type.COMMON, VRConfig.SPEC);
 
-        // Register the commonSetup method for modloading
+        modEventBus.addListener(NetworkEvents::registerPayloads);
         modEventBus.addListener(this::commonSetup);
 
-
-        // Register ourselves for server and other game events we are interested in.
-        // Note that this is necessary if and only if we want *this* class (ExampleMod) to respond directly to events.
-        // Do not add this line if there are no @SubscribeEvent-annotated functions in this class, like onServerStarting() below.
         NeoForge.EVENT_BUS.register(this);
 
-        // Register the item to a creative tab
         modEventBus.addListener(this::addCreative);
-
-        // Register our mod's ModConfigSpec so that FML can create and load the config file for us
-        modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {

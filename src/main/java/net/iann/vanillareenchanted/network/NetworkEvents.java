@@ -15,5 +15,15 @@ public class NetworkEvents {
                 SyncPlayerKnowledgePayload.STREAM_CODEC,
                 ClientPayloadHandler::handleSyncPlayerKnowledge
         );
+        registrar.playToServer(
+                ResearchEnchantmentPayload.TYPE,
+                ResearchEnchantmentPayload.STREAM_CODEC,
+                ServerPayloadHandler::handleResearchEnchantment
+        );
+        registrar.playToServer(
+                EnchantItemPayload.TYPE,
+                EnchantItemPayload.STREAM_CODEC,
+                ServerPayloadHandler::handleEnchantItem
+        );
     }
 }

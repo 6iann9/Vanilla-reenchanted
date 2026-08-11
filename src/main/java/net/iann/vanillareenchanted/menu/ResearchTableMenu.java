@@ -255,5 +255,44 @@ public class ResearchTableMenu extends AbstractContainerMenu {
             }
         }
     }
+    public ItemStack getPaymentItem() {
+        return this.paymentContainer.getItem(0);
+    }
+
+    public boolean consumeLapis(int amount) {
+        ItemStack paymentStack = this.paymentContainer.getItem(0);
+
+        if (!paymentStack.is(Items.LAPIS_LAZULI)) {
+            return false;
+        }
+
+        if (paymentStack.getCount() < amount) {
+            return false;
+        }
+
+        paymentStack.shrink(amount);
+        this.paymentContainer.setChanged();
+        this.broadcastChanges();
+
+        return true;
+    }
+
+    public void markResearchItemChanged() {
+        this.itemContainer.setChanged();
+        this.broadcastChanges();
+    }
+    public boolean consumePaymentBook() {
+        ItemStack paymentStack = this.paymentContainer.getItem(0);
+
+        if (!paymentStack.is(Items.ENCHANTED_BOOK)) {
+            return false;
+        }
+
+        paymentStack.shrink(1);
+        this.paymentContainer.setChanged();
+        this.broadcastChanges();
+
+        return true;
+    }
 
 }

@@ -1,7 +1,10 @@
 package net.iann.vanillareenchanted.screen;
 
 import net.iann.vanillareenchanted.VanillaReenchanted;
+import net.iann.vanillareenchanted.cost.EnchantmentCostCalculator;
 import net.iann.vanillareenchanted.menu.ResearchTableMenu;
+import net.iann.vanillareenchanted.network.EnchantItemPayload;
+import net.iann.vanillareenchanted.network.ResearchEnchantmentPayload;
 import net.iann.vanillareenchanted.registry.ModAttachments;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -13,6 +16,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.List;
 
@@ -42,17 +46,13 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
 
     private static final int ENCHANTMENTS_PER_PAGE = 6;
 
-    // Position of the first enchantment row inside the GUI texture.
     private static final int ENCHANT_ROW_X = 33;
     private static final int ENCHANT_ROW_Y = 60;
 
-    // Size of one row texture.
     private static final int ENCHANT_ROW_WIDTH = 97;
     private static final int ENCHANT_ROW_HEIGHT = 13;
     private static final int ENCHANT_ROW_SPACING = 15;
 
-
-    // Text offsets inside one enchantment row.
     private static final int ENCHANT_LEVEL_TEXT_X = 4;
     private static final int ENCHANT_NAME_TEXT_X = 15;
     private static final int ENCHANT_TEXT_Y = 3;
@@ -84,7 +84,6 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
     private static final int SELECT_ARROW_WIDTH = 4;
     private static final int SELECT_ARROW_HEIGHT = 8;
 
-    // Offset from the enchantment row.
     private static final int SELECT_ARROW_X_OFFSET = -5;
     private static final int SELECT_ARROW_Y_OFFSET = 3;
 
@@ -104,7 +103,6 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
 
     private static final int PAGE_ARROW_SIZE = 11;
 
-    // Offset from the previous arrow to the page number.
     private static final int PAGE_TEXT_X_OFFSET = 13;
     private static final int PAGE_TEXT_Y_OFFSET = 2;
 
@@ -139,13 +137,39 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
             );
 
     // -------------------------------------------------
+    // RIGHT PAGE DETAILS
+    // -------------------------------------------------
+
+    private static final int DETAILS_X = 146;
+    private static final int DETAILS_Y = 40;
+
+    private static final int DETAILS_LINE_HEIGHT = 12;
+
+    private static final int KNOWLEDGE_SECTION_Y = DETAILS_Y + 18;
+    private static final int ITEM_SECTION_Y = DETAILS_Y + 82;
+
+    private static final int TEXT_PROGRESS_BAR_WIDTH = 10;
+
+    private static final int RESEARCH_BUTTON_X = DETAILS_X;
+    private static final int RESEARCH_BUTTON_Y =
+            KNOWLEDGE_SECTION_Y + DETAILS_LINE_HEIGHT * 3;
+
+    private static final int RESEARCH_BUTTON_WIDTH = 70;
+    private static final int RESEARCH_BUTTON_HEIGHT = 10;
+
+    private static final int ENCHANT_BUTTON_X = DETAILS_X;
+    private static final int ENCHANT_BUTTON_Y =
+            ITEM_SECTION_Y + DETAILS_LINE_HEIGHT * 3;
+
+    private static final int ENCHANT_BUTTON_WIDTH = 70;
+    private static final int ENCHANT_BUTTON_HEIGHT = 10;
+
+    // -------------------------------------------------
     // SCREEN STATE
-    // These values change while the player uses the menu.
     // -------------------------------------------------
 
     private int enchantmentPage = 0;
 
-    // Null means the player has not selected an enchantment yet.
     private ResourceLocation selectedEnchantmentId = null;
 
     public ResearchTableScreen(
@@ -159,7 +183,6 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
         this.imageHeight = GUI_HEIGHT;
     }
 
-    // Draws the large book/inventory background image.
     @Override
     protected void renderBg(
             GuiGraphics guiGraphics,
@@ -189,17 +212,14 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
     ) {
         this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
 
-        // Draw slots, items, and the base menu.
         super.render(guiGraphics, mouseX, mouseY, partialTick);
 
-        // Draw our custom enchantment rows and page buttons.
         renderEnchantmentList(guiGraphics, mouseX, mouseY);
+        renderSelectedEnchantmentDetails(guiGraphics);
 
-        // Draw normal Minecraft item tooltips.
         this.renderTooltip(guiGraphics, mouseX, mouseY);
     }
 
-    // We do not have space for vanilla's default "Research Table" and "Inventory" labels.
     @Override
     protected void renderLabels(
             GuiGraphics guiGraphics,
@@ -281,7 +301,6 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
             boolean isHovered,
             boolean isSelected
     ) {
-        // Normal paper row.
         guiGraphics.blit(
                 ENCHANT_ROW_TEXTURE,
                 rowX,
@@ -294,7 +313,6 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
                 ENCHANT_ROW_HEIGHT
         );
 
-        // Hover border appears over the normal row.
         if (isHovered) {
             guiGraphics.blit(
                     ENCHANT_ROW_HOVER_TEXTURE,
@@ -309,7 +327,6 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
             );
         }
 
-        // Selection arrow appears just left of the selected row.
         if (isSelected) {
             guiGraphics.blit(
                     SELECT_ARROW_TEXTURE,
@@ -362,8 +379,183 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
         );
     }
 
-    // When no item is inserted: show player research level.
-    // When an item is inserted: show the enchantment level on that item.
+    // -------------------------------------------------
+    // RIGHT PAGE DETAILS
+    // -------------------------------------------------
+
+    private void renderSelectedEnchantmentDetails(GuiGraphics guiGraphics) {
+        Holder<Enchantment> selectedEnchantment = getSelectedEnchantment();
+
+        int x = this.leftPos + DETAILS_X;
+        int y = this.topPos + DETAILS_Y;
+
+        if (selectedEnchantment == null) {
+            drawRightPageText(
+                    guiGraphics,
+                    Component.literal("Select enchantment"),
+                    x,
+                    y
+            );
+
+            return;
+        }
+
+        String enchantmentName = selectedEnchantment.value()
+                .description()
+                .getString();
+
+        int maxLevel = Math.max(1, selectedEnchantment.value().getMaxLevel());
+        int knowledgeLevel = getPlayerKnowledgeLevel(selectedEnchantment);
+        int itemLevel = getItemEnchantmentLevel(selectedEnchantment);
+
+        int nextKnowledgeLevel = Math.min(knowledgeLevel + 1, maxLevel);
+        int nextItemLevel = Math.min(itemLevel + 1, maxLevel);
+
+        int researchXpCost = EnchantmentCostCalculator.getResearchXpCost(
+                selectedEnchantment,
+                nextKnowledgeLevel
+        );
+
+        int enchantLapisCost = EnchantmentCostCalculator.getEnchantLapisCost(
+                selectedEnchantment,
+                nextItemLevel
+        );
+
+        int enchantBookCost = 1;
+
+        drawRightPageText(
+                guiGraphics,
+                Component.literal(enchantmentName),
+                x,
+                y
+        );
+
+        drawRightPageText(
+                guiGraphics,
+                Component.literal("Knowledge Level"),
+                x,
+                this.topPos + KNOWLEDGE_SECTION_Y
+        );
+
+        drawRightPageText(
+                guiGraphics,
+                Component.literal(
+                        makeTextProgressBar(knowledgeLevel, maxLevel)
+                                + " " + knowledgeLevel + "/" + maxLevel
+                ),
+                x,
+                this.topPos + KNOWLEDGE_SECTION_Y + DETAILS_LINE_HEIGHT
+        );
+
+        if (isMaxed(knowledgeLevel, maxLevel)) {
+            drawRightPageText(
+                    guiGraphics,
+                    Component.literal("Maxed"),
+                    x,
+                    this.topPos + KNOWLEDGE_SECTION_Y + DETAILS_LINE_HEIGHT * 2
+            );
+        } else {
+            drawRightPageText(
+                    guiGraphics,
+                    Component.literal(
+                            "Cost: " + researchXpCost + " XP"
+                    ),
+                    x,
+                    this.topPos + KNOWLEDGE_SECTION_Y + DETAILS_LINE_HEIGHT * 2
+            );
+
+            drawRightPageText(
+                    guiGraphics,
+                    Component.literal("[ Research ]"),
+                    x,
+                    this.topPos + KNOWLEDGE_SECTION_Y + DETAILS_LINE_HEIGHT * 3
+            );
+        }
+
+        drawRightPageText(
+                guiGraphics,
+                Component.literal("----------------"),
+                x,
+                this.topPos + KNOWLEDGE_SECTION_Y + DETAILS_LINE_HEIGHT * 4
+        );
+
+        drawRightPageText(
+                guiGraphics,
+                Component.literal("On Item"),
+                x,
+                this.topPos + ITEM_SECTION_Y
+        );
+
+        drawRightPageText(
+                guiGraphics,
+                Component.literal(
+                        makeTextProgressBar(itemLevel, maxLevel)
+                                + " " + itemLevel + "/" + maxLevel
+                ),
+                x,
+                this.topPos + ITEM_SECTION_Y + DETAILS_LINE_HEIGHT
+        );
+
+        if (this.menu.getResearchItem().isEmpty()) {
+            drawRightPageText(
+                    guiGraphics,
+                    Component.literal("Insert item"),
+                    x,
+                    this.topPos + ITEM_SECTION_Y + DETAILS_LINE_HEIGHT * 2
+            );
+        } else if (isMaxed(itemLevel, maxLevel)) {
+            drawRightPageText(
+                    guiGraphics,
+                    Component.literal("Maxed"),
+                    x,
+                    this.topPos + ITEM_SECTION_Y + DETAILS_LINE_HEIGHT * 2
+            );
+        } else if (knowledgeLevel <= itemLevel) {
+            drawRightPageText(
+                    guiGraphics,
+                    Component.literal("Research first"),
+                    x,
+                    this.topPos + ITEM_SECTION_Y + DETAILS_LINE_HEIGHT * 2
+            );
+        } else {
+            drawRightPageText(
+                    guiGraphics,
+                    Component.literal(
+                            "Cost: " + enchantBookCost + " Book, " + enchantLapisCost + " Lapis"
+                    ),
+                    x,
+                    this.topPos + ITEM_SECTION_Y + DETAILS_LINE_HEIGHT * 2
+            );
+
+            drawRightPageText(
+                    guiGraphics,
+                    Component.literal("[ Enchant ]"),
+                    x,
+                    this.topPos + ITEM_SECTION_Y + DETAILS_LINE_HEIGHT * 3
+            );
+        }
+    }
+
+    private void drawRightPageText(
+            GuiGraphics guiGraphics,
+            Component text,
+            int x,
+            int y
+    ) {
+        guiGraphics.drawString(
+                this.font,
+                text,
+                x,
+                y,
+                TEXT_COLOR,
+                false
+        );
+    }
+
+    // -------------------------------------------------
+    // LEVEL DISPLAY HELPERS
+    // -------------------------------------------------
+
     private int getDisplayedEnchantmentLevel(
             Holder<Enchantment> enchantmentHolder
     ) {
@@ -373,6 +565,12 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
             return researchItem.getEnchantmentLevel(enchantmentHolder);
         }
 
+        return getPlayerKnowledgeLevel(enchantmentHolder);
+    }
+
+    private int getPlayerKnowledgeLevel(
+            Holder<Enchantment> enchantmentHolder
+    ) {
         Minecraft minecraft = Minecraft.getInstance();
 
         if (minecraft.player == null) {
@@ -388,6 +586,22 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
         return minecraft.player
                 .getData(ModAttachments.PLAYER_KNOWLEDGE)
                 .getLevel(enchantmentId);
+    }
+
+    private int getItemEnchantmentLevel(
+            Holder<Enchantment> enchantmentHolder
+    ) {
+        ItemStack researchItem = this.menu.getResearchItem();
+
+        if (researchItem.isEmpty()) {
+            return 0;
+        }
+
+        return researchItem.getEnchantmentLevel(enchantmentHolder);
+    }
+
+    private boolean isMaxed(int currentLevel, int maxLevel) {
+        return currentLevel >= maxLevel;
     }
 
     // -------------------------------------------------
@@ -503,9 +717,16 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
             double mouseY,
             int button
     ) {
-        // Only left mouse clicks interact with our UI controls.
         if (button == 0) {
             if (handlePageButtonClick(mouseX, mouseY)) {
+                return true;
+            }
+
+            if (handleResearchButtonClick(mouseX, mouseY)) {
+                return true;
+            }
+
+            if (handleEnchantButtonClick(mouseX, mouseY)) {
                 return true;
             }
 
@@ -543,7 +764,7 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
         )) {
             if (this.enchantmentPage > 0) {
                 this.enchantmentPage--;
-                playButtonClickSound();
+                playPageFlipSound();
             }
 
             return true;
@@ -559,7 +780,7 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
         )) {
             if (this.enchantmentPage < totalPages - 1) {
                 this.enchantmentPage++;
-                playButtonClickSound();
+                playPageFlipSound();
             }
 
             return true;
@@ -602,14 +823,118 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
             );
 
             if (enchantmentId != null) {
+                boolean changedSelection = !enchantmentId.equals(this.selectedEnchantmentId);
+
                 this.selectedEnchantmentId = enchantmentId;
-                playButtonClickSound();
+
+                if (changedSelection) {
+                    playPageFlipSound();
+                }
             }
 
             return true;
         }
 
         return false;
+    }
+
+    private boolean handleResearchButtonClick(
+            double mouseX,
+            double mouseY
+    ) {
+        Holder<Enchantment> selectedEnchantment = getSelectedEnchantment();
+
+        if (selectedEnchantment == null) {
+            return false;
+        }
+
+        ResourceLocation enchantmentId = getEnchantmentId(selectedEnchantment);
+
+        if (enchantmentId == null) {
+            return false;
+        }
+
+        int buttonX = this.leftPos + RESEARCH_BUTTON_X;
+        int buttonY = this.topPos + RESEARCH_BUTTON_Y;
+
+        if (!isMouseOver(
+                mouseX,
+                mouseY,
+                buttonX,
+                buttonY,
+                RESEARCH_BUTTON_WIDTH,
+                RESEARCH_BUTTON_HEIGHT
+        )) {
+            return false;
+        }
+
+        int knowledgeLevel = getPlayerKnowledgeLevel(selectedEnchantment);
+        int maxLevel = Math.max(1, selectedEnchantment.value().getMaxLevel());
+
+        if (isMaxed(knowledgeLevel, maxLevel)) {
+            return false;
+        }
+
+        PacketDistributor.sendToServer(
+                new ResearchEnchantmentPayload(enchantmentId)
+        );
+
+        return true;
+    }
+
+    private boolean handleEnchantButtonClick(
+            double mouseX,
+            double mouseY
+    ) {
+        Holder<Enchantment> selectedEnchantment = getSelectedEnchantment();
+
+        if (selectedEnchantment == null) {
+            return false;
+        }
+
+        ResourceLocation enchantmentId = getEnchantmentId(selectedEnchantment);
+
+        if (enchantmentId == null) {
+            return false;
+        }
+
+        int buttonX = this.leftPos + ENCHANT_BUTTON_X;
+        int buttonY = this.topPos + ENCHANT_BUTTON_Y;
+
+        if (!isMouseOver(
+                mouseX,
+                mouseY,
+                buttonX,
+                buttonY,
+                ENCHANT_BUTTON_WIDTH,
+                ENCHANT_BUTTON_HEIGHT
+        )) {
+            return false;
+        }
+
+        ItemStack researchItem = this.menu.getResearchItem();
+
+        if (researchItem.isEmpty()) {
+            return false;
+        }
+
+        int knowledgeLevel = getPlayerKnowledgeLevel(selectedEnchantment);
+        int itemLevel = getItemEnchantmentLevel(selectedEnchantment);
+        int maxLevel = Math.max(1, selectedEnchantment.value().getMaxLevel());
+
+        if (isMaxed(itemLevel, maxLevel)) {
+            return false;
+        }
+
+        if (knowledgeLevel <= itemLevel) {
+            return false;
+        }
+
+        PacketDistributor.sendToServer(
+                new EnchantItemPayload(enchantmentId)
+        );
+
+        return true;
     }
 
     // -------------------------------------------------
@@ -632,6 +957,22 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
         );
     }
 
+    private Holder<Enchantment> getSelectedEnchantment() {
+        if (this.selectedEnchantmentId == null) {
+            return null;
+        }
+
+        for (Holder<Enchantment> enchantmentHolder : this.menu.getVisibleEnchantments()) {
+            ResourceLocation enchantmentId = getEnchantmentId(enchantmentHolder);
+
+            if (this.selectedEnchantmentId.equals(enchantmentId)) {
+                return enchantmentHolder;
+            }
+        }
+
+        return null;
+    }
+
     private ResourceLocation getEnchantmentId(
             Holder<Enchantment> enchantmentHolder
     ) {
@@ -640,55 +981,32 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
                 .orElse(null);
     }
 
-    private String formatEnchantName(String enchantmentPath) {
-        String[] words = enchantmentPath.split("_");
-        StringBuilder formattedName = new StringBuilder();
+    private String makeTextProgressBar(int currentLevel, int maxLevel) {
+        int safeMaxLevel = Math.max(1, maxLevel);
+        int clampedCurrentLevel = Math.max(0, Math.min(currentLevel, safeMaxLevel));
 
-        for (String word : words) {
-            if (word.isEmpty()) {
-                continue;
+        int filledUntil = clampedCurrentLevel
+                * TEXT_PROGRESS_BAR_WIDTH
+                / safeMaxLevel;
+
+        StringBuilder progressBar = new StringBuilder("[");
+
+        for (int i = 1; i <= TEXT_PROGRESS_BAR_WIDTH; i++) {
+            if (i <= filledUntil) {
+                progressBar.append("#");
+            } else {
+                progressBar.append("-");
             }
-
-            formattedName.append(
-                    Character.toUpperCase(word.charAt(0))
-            );
-
-            formattedName.append(word.substring(1));
-            formattedName.append(" ");
         }
 
-        return formattedName.toString().trim();
+        progressBar.append("]");
+
+        return progressBar.toString();
     }
 
-    private void playButtonClickSound() {
-        Minecraft minecraft = Minecraft.getInstance();
-
-        if (minecraft.player != null) {
-            minecraft.player.playSound(
-                    SoundEvents.UI_BUTTON_CLICK.value(),
-                    1.0F,
-                    1.0F
-            );
-        }
-    }
-
-    private boolean isMouseOver(
-            double mouseX,
-            double mouseY,
-            int x,
-            int y,
-            int width,
-            int height
-    ) {
-        return mouseX >= x
-                && mouseX < x + width
-                && mouseY >= y
-                && mouseY < y + height;
-    }
     private Component shortenTextToFit(Component text, int maxWidth) {
         String fullText = text.getString();
 
-        // It already fits, so keep it unchanged.
         if (this.font.width(fullText) <= maxWidth) {
             return Component.literal(fullText);
         }
@@ -708,5 +1026,31 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
         }
 
         return Component.literal(shortenedText + dots);
+    }
+
+    private void playPageFlipSound() {
+        Minecraft minecraft = Minecraft.getInstance();
+
+        if (minecraft.player != null) {
+            minecraft.player.playSound(
+                    SoundEvents.BOOK_PAGE_TURN,
+                    1.0F,
+                    1.0F
+            );
+        }
+    }
+
+    private boolean isMouseOver(
+            double mouseX,
+            double mouseY,
+            int x,
+            int y,
+            int width,
+            int height
+    ) {
+        return mouseX >= x
+                && mouseX < x + width
+                && mouseY >= y
+                && mouseY < y + height;
     }
 }
