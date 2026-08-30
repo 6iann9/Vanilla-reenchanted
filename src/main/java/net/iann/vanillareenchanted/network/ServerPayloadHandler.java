@@ -1,12 +1,13 @@
 package net.iann.vanillareenchanted.network;
 
 import net.iann.vanillareenchanted.cost.EnchantmentCostCalculator;
-import net.iann.vanillareenchanted.enchantment.EnchantedBookResearchHelper;
-import net.iann.vanillareenchanted.enchantment.PlayerKnowledgeData;
+import net.iann.vanillareenchanted.cost.EnvironmentCostModifier;
+import net.iann.vanillareenchanted.enchantment.DuplicateBookDiscountHelper;
+import net.iann.vanillareenchanted.library.LibraryScanner;
 import net.iann.vanillareenchanted.menu.ResearchTableMenu;
-import net.iann.vanillareenchanted.registry.ModAttachments;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
@@ -14,11 +15,17 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.EnchantmentTags;
+import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.Optional;
@@ -60,77 +67,142 @@ public class ServerPayloadHandler {
 
         Holder<Enchantment> enchantmentHolder = optionalEnchantment.get();
 
-        PlayerKnowledgeData knowledge =
-                serverPlayer.getData(ModAttachments.PLAYER_KNOWLEDGE);
+        LibraryScanner.LibraryScanResult scanResult =
+                researchTableMenu.scanLibrary();
 
-        int currentLevel = knowledge.getLevel(enchantmentId);
+        int currentLevel = scanResult.getMaxLevel(enchantmentId);
         int maxLevel = Math.max(1, enchantmentHolder.value().getMaxLevel());
 
         if (currentLevel >= maxLevel) {
             serverPlayer.sendSystemMessage(
-                    Component.literal("This enchantment is already fully researched.")
+                    Component.literal("This enchantment is already fully researched in the library.")
             );
 
-            KnowledgeSync.sendToClient(serverPlayer);
+            return;
+        }
+
+        boolean isTreasure = enchantmentHolder.is(EnchantmentTags.TREASURE);
+
+        if (currentLevel <= 0 && isTreasure) {
+            serverPlayer.sendSystemMessage(
+                    Component.literal("Treasure enchantments must be found before they can be upgraded.")
+            );
+
             return;
         }
 
         int targetLevel = currentLevel + 1;
 
-        ItemStack paymentItem = researchTableMenu.getPaymentItem();
+        boolean hasBookTarget;
 
-        boolean hasMatchingBook =
-                EnchantedBookResearchHelper.hasBookForResearchLevel(
-                        paymentItem,
-                        enchantmentHolder,
-                        targetLevel
-                );
+        if (targetLevel == 1) {
+            hasBookTarget = scanResult.getFirstNormalBookSlot() != null;
 
-        boolean isTreasure =
-                EnchantedBookResearchHelper.isTreasureEnchantment(enchantmentHolder);
-
-        if (hasMatchingBook) {
-            if (!serverPlayer.isCreative()) {
-                boolean consumedBook = researchTableMenu.consumePaymentBook();
-
-                if (!consumedBook) {
-                    serverPlayer.sendSystemMessage(
-                            Component.literal("Could not consume enchanted book.")
-                    );
-
-                    return;
-                }
-            }
-        } else {
-            if (isTreasure) {
+            if (!hasBookTarget) {
                 serverPlayer.sendSystemMessage(
-                        Component.literal("Treasure enchantments require a matching enchanted book.")
+                        Component.literal("Place a normal book in a valid chiseled bookshelf first.")
                 );
 
                 return;
             }
+        } else {
+            hasBookTarget = scanResult.getHighestEntry(enchantmentId) != null;
 
-            int xpCost = EnchantmentCostCalculator.getResearchXpCost(
-                    enchantmentHolder,
-                    targetLevel
-            );
+            if (!hasBookTarget) {
+                serverPlayer.sendSystemMessage(
+                        Component.literal("The previous level must exist in the library first.")
+                );
 
-            if (!serverPlayer.isCreative()) {
-                if (serverPlayer.experienceLevel < xpCost) {
-                    serverPlayer.sendSystemMessage(
-                            Component.literal("Not enough XP levels. Need " + xpCost + ".")
-                    );
-
-                    return;
-                }
-
-                serverPlayer.giveExperienceLevels(-xpCost);
+                return;
             }
         }
 
-        knowledge.setLevel(enchantmentId, targetLevel);
+        int baseXpCost = EnchantmentCostCalculator.getResearchXpCost(
+                enchantmentHolder,
+                targetLevel
+        );
 
-        KnowledgeSync.sendToClient(serverPlayer);
+        ItemStack duplicateBook = researchTableMenu.getDuplicateBookItem();
+
+        int costAfterDuplicateBook = DuplicateBookDiscountHelper.getDiscountedResearchXpLevelCost(
+                baseXpCost,
+                targetLevel,
+                duplicateBook,
+                enchantmentHolder
+        );
+
+        int xpCost = EnvironmentCostModifier.applyCandleResearchDiscount(
+                serverPlayer.level(),
+                researchTableMenu.getTablePos(),
+                costAfterDuplicateBook
+        );
+
+        boolean shouldConsumeDuplicateBook =
+                DuplicateBookDiscountHelper.hasMatchingDuplicateBook(
+                        duplicateBook,
+                        enchantmentHolder
+                );
+
+        if (!serverPlayer.isCreative()
+                && xpCost > 0
+                && serverPlayer.experienceLevel < xpCost) {
+
+            serverPlayer.sendSystemMessage(
+                    Component.literal("Not enough XP levels. Need " + xpCost + ".")
+            );
+
+            return;
+        }
+
+        boolean updatedBook;
+
+        if (targetLevel == 1) {
+            LibraryScanner.LibraryBookSlot normalBookSlot =
+                    scanResult.getFirstNormalBookSlot();
+
+            updatedBook = convertNormalBookToEnchantedBook(
+                    serverPlayer.level(),
+                    normalBookSlot,
+                    enchantmentHolder,
+                    targetLevel
+            );
+        } else {
+            LibraryScanner.LibraryKnowledgeEntry highestEntry =
+                    scanResult.getHighestEntry(enchantmentId);
+
+            updatedBook = upgradeExistingLibraryBook(
+                    serverPlayer.level(),
+                    highestEntry,
+                    enchantmentHolder,
+                    targetLevel
+            );
+        }
+
+        if (!updatedBook) {
+            serverPlayer.sendSystemMessage(
+                    Component.literal("Could not update the library book.")
+            );
+
+            return;
+        }
+
+        if (!serverPlayer.isCreative()) {
+            if (xpCost > 0) {
+                serverPlayer.giveExperienceLevels(-xpCost);
+            }
+
+            if (shouldConsumeDuplicateBook) {
+                researchTableMenu.consumePaymentBook();
+            }
+        }
+
+        researchTableMenu.refreshVisibleEnchantments();
+        researchTableMenu.broadcastChanges();
+
+        LibraryKnowledgeSync.sendToClient(
+                serverPlayer,
+                researchTableMenu
+        );
 
         serverPlayer.playNotifySound(
                 SoundEvents.UI_CARTOGRAPHY_TABLE_TAKE_RESULT,
@@ -139,13 +211,13 @@ public class ServerPayloadHandler {
                 1.2F
         );
 
-        if (hasMatchingBook) {
+        if (targetLevel == 1) {
             serverPlayer.sendSystemMessage(
-                    Component.literal("Researched " + enchantmentId + " level " + targetLevel + " using a book.")
+                    Component.literal("Created " + enchantmentId + " level " + targetLevel + " in the library.")
             );
         } else {
             serverPlayer.sendSystemMessage(
-                    Component.literal("Researched " + enchantmentId + " level " + targetLevel)
+                    Component.literal("Upgraded " + enchantmentId + " to level " + targetLevel + " in the library.")
             );
         }
     }
@@ -211,10 +283,9 @@ public class ServerPayloadHandler {
             return;
         }
 
-        PlayerKnowledgeData knowledge =
-                serverPlayer.getData(ModAttachments.PLAYER_KNOWLEDGE);
+        int libraryLevel =
+                researchTableMenu.scanLibrary().getMaxLevel(enchantmentId);
 
-        int knowledgeLevel = knowledge.getLevel(enchantmentId);
         int itemLevel = researchItem.getEnchantmentLevel(enchantmentHolder);
         int maxLevel = Math.max(1, enchantmentHolder.value().getMaxLevel());
 
@@ -226,9 +297,9 @@ public class ServerPayloadHandler {
             return;
         }
 
-        if (knowledgeLevel <= itemLevel) {
+        if (libraryLevel <= itemLevel) {
             serverPlayer.sendSystemMessage(
-                    Component.literal("Research this enchantment first.")
+                    Component.literal("Your library does not know a high enough level.")
             );
 
             return;
@@ -236,12 +307,33 @@ public class ServerPayloadHandler {
 
         int targetLevel = itemLevel + 1;
 
-        int lapisCost = EnchantmentCostCalculator.getEnchantLapisCost(
+        int baseLapisCost = EnchantmentCostCalculator.getEnchantLapisCost(
                 enchantmentHolder,
                 targetLevel
         );
 
-        if (!serverPlayer.isCreative()) {
+        ItemStack duplicateBook = researchTableMenu.getDuplicateBookItem();
+
+        int costAfterDuplicateBook = DuplicateBookDiscountHelper.getDiscountedEnchantLapisCost(
+                baseLapisCost,
+                targetLevel,
+                duplicateBook,
+                enchantmentHolder
+        );
+
+        int lapisCost = EnvironmentCostModifier.applyMobHeadEnchantDiscount(
+                serverPlayer.level(),
+                researchTableMenu.getTablePos(),
+                costAfterDuplicateBook
+        );
+
+        boolean shouldConsumeDuplicateBook =
+                DuplicateBookDiscountHelper.hasMatchingDuplicateBook(
+                        duplicateBook,
+                        enchantmentHolder
+                );
+
+        if (!serverPlayer.isCreative() && lapisCost > 0) {
             boolean consumed = researchTableMenu.consumeLapis(lapisCost);
 
             if (!consumed) {
@@ -261,6 +353,10 @@ public class ServerPayloadHandler {
 
         researchTableMenu.markResearchItemChanged();
 
+        if (!serverPlayer.isCreative() && shouldConsumeDuplicateBook) {
+            researchTableMenu.consumePaymentBook();
+        }
+
         serverPlayer.playNotifySound(
                 SoundEvents.ENCHANTMENT_TABLE_USE,
                 SoundSource.PLAYERS,
@@ -270,6 +366,127 @@ public class ServerPayloadHandler {
 
         serverPlayer.sendSystemMessage(
                 Component.literal("Applied " + enchantmentId + " level " + targetLevel)
+        );
+    }
+
+    private static boolean convertNormalBookToEnchantedBook(
+            Level level,
+            LibraryScanner.LibraryBookSlot normalBookSlot,
+            Holder<Enchantment> enchantmentHolder,
+            int targetLevel
+    ) {
+        BlockEntity blockEntity = level.getBlockEntity(normalBookSlot.shelfPos());
+
+        if (!(blockEntity instanceof Container container)) {
+            return false;
+        }
+
+        ItemStack currentStack = container.getItem(normalBookSlot.slot());
+
+        if (!currentStack.is(Items.BOOK)) {
+            return false;
+        }
+
+        ItemStack enchantedBook = new ItemStack(Items.ENCHANTED_BOOK);
+
+        setStoredBookEnchantmentLevel(
+                enchantedBook,
+                enchantmentHolder,
+                targetLevel
+        );
+
+        container.setItem(
+                normalBookSlot.slot(),
+                enchantedBook
+        );
+
+        markShelfChanged(
+                level,
+                normalBookSlot.shelfPos(),
+                container
+        );
+
+        return true;
+    }
+
+    private static boolean upgradeExistingLibraryBook(
+            Level level,
+            LibraryScanner.LibraryKnowledgeEntry knowledgeEntry,
+            Holder<Enchantment> enchantmentHolder,
+            int targetLevel
+    ) {
+        BlockEntity blockEntity = level.getBlockEntity(knowledgeEntry.shelfPos());
+
+        if (!(blockEntity instanceof Container container)) {
+            return false;
+        }
+
+        ItemStack currentStack = container.getItem(knowledgeEntry.slot());
+
+        if (!currentStack.is(Items.ENCHANTED_BOOK)) {
+            return false;
+        }
+
+        ItemStack updatedBook = currentStack.copy();
+
+        setStoredBookEnchantmentLevel(
+                updatedBook,
+                enchantmentHolder,
+                targetLevel
+        );
+
+        container.setItem(
+                knowledgeEntry.slot(),
+                updatedBook
+        );
+
+        markShelfChanged(
+                level,
+                knowledgeEntry.shelfPos(),
+                container
+        );
+
+        return true;
+    }
+
+    private static void setStoredBookEnchantmentLevel(
+            ItemStack bookStack,
+            Holder<Enchantment> enchantmentHolder,
+            int level
+    ) {
+        ItemEnchantments storedEnchantments = bookStack.getOrDefault(
+                DataComponents.STORED_ENCHANTMENTS,
+                ItemEnchantments.EMPTY
+        );
+
+        ItemEnchantments.Mutable mutableEnchantments =
+                new ItemEnchantments.Mutable(storedEnchantments);
+
+        mutableEnchantments.set(
+                enchantmentHolder,
+                level
+        );
+
+        bookStack.set(
+                DataComponents.STORED_ENCHANTMENTS,
+                mutableEnchantments.toImmutable()
+        );
+    }
+
+    private static void markShelfChanged(
+            Level level,
+            net.minecraft.core.BlockPos shelfPos,
+            Container container
+    ) {
+        container.setChanged();
+
+        BlockState blockState = level.getBlockState(shelfPos);
+
+        level.sendBlockUpdated(
+                shelfPos,
+                blockState,
+                blockState,
+                3
         );
     }
 
@@ -303,7 +520,10 @@ public class ServerPayloadHandler {
                         EnchantmentHelper.getEnchantmentsForCrafting(stack)
                 );
 
-        mutableEnchantments.set(enchantmentHolder, level);
+        mutableEnchantments.set(
+                enchantmentHolder,
+                level
+        );
 
         EnchantmentHelper.setEnchantments(
                 stack,

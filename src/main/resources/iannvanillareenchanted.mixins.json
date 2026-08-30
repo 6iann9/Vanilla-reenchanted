@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "package": "net.iann.vanillareenchanted.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "AnvilMenuMixin"
+  ],
+  "client": [
+    "AnvilScreenMixin"
+  ],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

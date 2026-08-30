@@ -2,6 +2,7 @@ package net.iann.vanillareenchanted.block;
 
 import net.iann.vanillareenchanted.menu.ResearchTableMenuProvider;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -10,6 +11,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 
 public class ResearchTableBlock extends Block {
+
     public ResearchTableBlock(Properties properties) {
         super(properties);
     }
@@ -22,8 +24,11 @@ public class ResearchTableBlock extends Block {
             Player player,
             BlockHitResult hitResult
     ) {
-        if (!level.isClientSide) {
-            player.openMenu(new ResearchTableMenuProvider());
+        if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
+            serverPlayer.openMenu(
+                    new ResearchTableMenuProvider(pos),
+                    buffer -> buffer.writeBlockPos(pos)
+            );
         }
 
         return InteractionResult.SUCCESS;

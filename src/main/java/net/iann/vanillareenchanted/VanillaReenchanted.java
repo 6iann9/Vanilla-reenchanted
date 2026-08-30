@@ -1,11 +1,11 @@
 package net.iann.vanillareenchanted;
 
 import net.iann.vanillareenchanted.config.VRConfig;
+import net.iann.vanillareenchanted.event.AnvilEvents;
+import net.iann.vanillareenchanted.event.EnchantingTableEvents;
+import net.iann.vanillareenchanted.event.VillagerTradeEvents;
 import net.iann.vanillareenchanted.network.NetworkEvents;
-import net.iann.vanillareenchanted.registry.ModAttachments;
-import net.iann.vanillareenchanted.registry.ModBlocks;
-import net.iann.vanillareenchanted.registry.ModItems;
-import net.iann.vanillareenchanted.registry.ModMenus;
+import net.iann.vanillareenchanted.registry.*;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
@@ -53,6 +53,11 @@ public class VanillaReenchanted {
         ModBlocks.register(modEventBus);
         ModItems.register(modEventBus);
         ModMenus.register(modEventBus);
+        ModLootModifiers.register(modEventBus);
+
+        NeoForge.EVENT_BUS.register(VillagerTradeEvents.class);
+        NeoForge.EVENT_BUS.register(AnvilEvents.class);
+        NeoForge.EVENT_BUS.register(EnchantingTableEvents.class);
 
         modContainer.registerConfig(ModConfig.Type.COMMON, VRConfig.SPEC);
 

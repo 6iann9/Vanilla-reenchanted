@@ -2,10 +2,11 @@ package net.iann.vanillareenchanted.screen;
 
 import net.iann.vanillareenchanted.VanillaReenchanted;
 import net.iann.vanillareenchanted.cost.EnchantmentCostCalculator;
+import net.iann.vanillareenchanted.cost.EnvironmentCostModifier;
+import net.iann.vanillareenchanted.enchantment.DuplicateBookDiscountHelper;
 import net.iann.vanillareenchanted.menu.ResearchTableMenu;
 import net.iann.vanillareenchanted.network.EnchantItemPayload;
 import net.iann.vanillareenchanted.network.ResearchEnchantmentPayload;
-import net.iann.vanillareenchanted.registry.ModAttachments;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -22,27 +23,14 @@ import java.util.List;
 
 public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMenu> {
 
-    // -------------------------------------------------
-    // GUI SIZE
-    // Must match the size of research_table.png.
-    // -------------------------------------------------
-
     private static final int GUI_WIDTH = 278;
     private static final int GUI_HEIGHT = 278;
-
-    // -------------------------------------------------
-    // MAIN BACKGROUND TEXTURE
-    // -------------------------------------------------
 
     private static final ResourceLocation BACKGROUND_TEXTURE =
             ResourceLocation.fromNamespaceAndPath(
                     VanillaReenchanted.MODID,
                     "textures/gui/research_table.png"
             );
-
-    // -------------------------------------------------
-    // ENCHANTMENT LIST SETTINGS
-    // -------------------------------------------------
 
     private static final int ENCHANTMENTS_PER_PAGE = 6;
 
@@ -77,10 +65,6 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
                     "textures/gui/enchantment_list_text_box_outline.png"
             );
 
-    // -------------------------------------------------
-    // SELECTED ENCHANTMENT ARROW
-    // -------------------------------------------------
-
     private static final int SELECT_ARROW_WIDTH = 4;
     private static final int SELECT_ARROW_HEIGHT = 8;
 
@@ -92,10 +76,6 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
                     VanillaReenchanted.MODID,
                     "textures/gui/select_arrow.png"
             );
-
-    // -------------------------------------------------
-    // PAGE ARROWS
-    // -------------------------------------------------
 
     private static final int PAGE_PREVIOUS_X = 58;
     private static final int PAGE_NEXT_X = PAGE_PREVIOUS_X + 33;
@@ -136,10 +116,6 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
                     "textures/gui/buttons/arrow_outline.png"
             );
 
-    // -------------------------------------------------
-    // RIGHT PAGE DETAILS
-    // -------------------------------------------------
-
     private static final int DETAILS_X = 146;
     private static final int DETAILS_Y = 40;
 
@@ -164,9 +140,52 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
     private static final int ENCHANT_BUTTON_WIDTH = 70;
     private static final int ENCHANT_BUTTON_HEIGHT = 10;
 
-    // -------------------------------------------------
-    // SCREEN STATE
-    // -------------------------------------------------
+    private static final int LAPIS_SLOT_X = 170;
+    private static final int LAPIS_SLOT_Y = 19;
+
+    private static final int DUPLICATE_BOOK_SLOT_X = 210;
+    private static final int DUPLICATE_BOOK_SLOT_Y = 19;
+
+    private static final int LEFT_ARMOR_X = 37;
+    private static final int RIGHT_ARMOR_X = 225;
+    private static final int ARMOR_TOP_Y = 196;
+    private static final int ARMOR_BOTTOM_Y = 232;
+
+    private static final ResourceLocation LAPIS_HINT_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(
+                    VanillaReenchanted.MODID,
+                    "textures/gui/icons/lapis_hint.png"
+            );
+
+    private static final ResourceLocation BOOK_HINT_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(
+                    VanillaReenchanted.MODID,
+                    "textures/gui/icons/book_hint.png"
+            );
+
+    private static final ResourceLocation HELMET_HINT_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(
+                    VanillaReenchanted.MODID,
+                    "textures/gui/icons/helmet_hint.png"
+            );
+
+    private static final ResourceLocation CHESTPLATE_HINT_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(
+                    VanillaReenchanted.MODID,
+                    "textures/gui/icons/chestplate_hint.png"
+            );
+
+    private static final ResourceLocation LEGGINGS_HINT_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(
+                    VanillaReenchanted.MODID,
+                    "textures/gui/icons/leggings_hint.png"
+            );
+
+    private static final ResourceLocation BOOTS_HINT_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(
+                    VanillaReenchanted.MODID,
+                    "textures/gui/icons/boots_hint.png"
+            );
 
     private int enchantmentPage = 0;
 
@@ -214,6 +233,8 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
 
         super.render(guiGraphics, mouseX, mouseY, partialTick);
 
+        renderSlotHintTextures(guiGraphics);
+
         renderEnchantmentList(guiGraphics, mouseX, mouseY);
         renderSelectedEnchantmentDetails(guiGraphics);
 
@@ -228,9 +249,79 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
     ) {
     }
 
-    // -------------------------------------------------
-    // ENCHANTMENT LIST RENDERING
-    // -------------------------------------------------
+    private void renderSlotHintTextures(GuiGraphics guiGraphics) {
+        renderSlotHintTexture(
+                guiGraphics,
+                this.menu.getLapisItem(),
+                LAPIS_HINT_TEXTURE,
+                LAPIS_SLOT_X,
+                LAPIS_SLOT_Y
+        );
+
+        renderSlotHintTexture(
+                guiGraphics,
+                this.menu.getDuplicateBookItem(),
+                BOOK_HINT_TEXTURE,
+                DUPLICATE_BOOK_SLOT_X,
+                DUPLICATE_BOOK_SLOT_Y
+        );
+
+        renderSlotHintTexture(
+                guiGraphics,
+                this.menu.getHelmetItem(),
+                HELMET_HINT_TEXTURE,
+                LEFT_ARMOR_X,
+                ARMOR_TOP_Y
+        );
+
+        renderSlotHintTexture(
+                guiGraphics,
+                this.menu.getChestplateItem(),
+                CHESTPLATE_HINT_TEXTURE,
+                LEFT_ARMOR_X,
+                ARMOR_BOTTOM_Y
+        );
+
+        renderSlotHintTexture(
+                guiGraphics,
+                this.menu.getLeggingsItem(),
+                LEGGINGS_HINT_TEXTURE,
+                RIGHT_ARMOR_X,
+                ARMOR_TOP_Y
+        );
+
+        renderSlotHintTexture(
+                guiGraphics,
+                this.menu.getBootsItem(),
+                BOOTS_HINT_TEXTURE,
+                RIGHT_ARMOR_X,
+                ARMOR_BOTTOM_Y
+        );
+    }
+
+    private void renderSlotHintTexture(
+            GuiGraphics guiGraphics,
+            ItemStack slotStack,
+            ResourceLocation hintTexture,
+            int x,
+            int y
+    ) {
+        if (!slotStack.isEmpty()) {
+            return;
+        }
+
+        guiGraphics.blit(
+                hintTexture,
+                this.leftPos + x,
+                this.topPos + y,
+                0,
+                0,
+                16,
+                16,
+                16,
+                16
+        );
+    }
 
     private void renderEnchantmentList(
             GuiGraphics guiGraphics,
@@ -379,10 +470,6 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
         );
     }
 
-    // -------------------------------------------------
-    // RIGHT PAGE DETAILS
-    // -------------------------------------------------
-
     private void renderSelectedEnchantmentDetails(GuiGraphics guiGraphics) {
         Holder<Enchantment> selectedEnchantment = getSelectedEnchantment();
 
@@ -405,20 +492,46 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
                 .getString();
 
         int maxLevel = Math.max(1, selectedEnchantment.value().getMaxLevel());
-        int knowledgeLevel = getPlayerKnowledgeLevel(selectedEnchantment);
+        int knowledgeLevel = getLibraryKnowledgeLevel(selectedEnchantment);
         int itemLevel = getItemEnchantmentLevel(selectedEnchantment);
 
         int nextKnowledgeLevel = Math.min(knowledgeLevel + 1, maxLevel);
         int nextItemLevel = Math.min(itemLevel + 1, maxLevel);
 
-        int researchXpCost = EnchantmentCostCalculator.getResearchXpCost(
+        int baseResearchXpCost = EnchantmentCostCalculator.getResearchXpCost(
                 selectedEnchantment,
                 nextKnowledgeLevel
         );
 
-        int enchantLapisCost = EnchantmentCostCalculator.getEnchantLapisCost(
+        int researchCostAfterDuplicateBook = DuplicateBookDiscountHelper.getDiscountedResearchXpLevelCost(
+                baseResearchXpCost,
+                nextKnowledgeLevel,
+                this.menu.getDuplicateBookItem(),
+                selectedEnchantment
+        );
+
+        int researchXpCost = EnvironmentCostModifier.applyCandleResearchDiscount(
+                this.minecraft.level,
+                this.menu.getTablePos(),
+                researchCostAfterDuplicateBook
+        );
+
+        int baseEnchantLapisCost = EnchantmentCostCalculator.getEnchantLapisCost(
                 selectedEnchantment,
                 nextItemLevel
+        );
+
+        int enchantCostAfterDuplicateBook = DuplicateBookDiscountHelper.getDiscountedEnchantLapisCost(
+                baseEnchantLapisCost,
+                nextItemLevel,
+                this.menu.getDuplicateBookItem(),
+                selectedEnchantment
+        );
+
+        int enchantLapisCost = EnvironmentCostModifier.applyMobHeadEnchantDiscount(
+                this.minecraft.level,
+                this.menu.getTablePos(),
+                enchantCostAfterDuplicateBook
         );
 
         int enchantBookCost = 1;
@@ -521,7 +634,7 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
             drawRightPageText(
                     guiGraphics,
                     Component.literal(
-                            "Cost: " + enchantBookCost + " Book, " + enchantLapisCost + " Lapis"
+                            "Cost: " + enchantLapisCost + " Lapis"
                     ),
                     x,
                     this.topPos + ITEM_SECTION_Y + DETAILS_LINE_HEIGHT * 2
@@ -552,10 +665,6 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
         );
     }
 
-    // -------------------------------------------------
-    // LEVEL DISPLAY HELPERS
-    // -------------------------------------------------
-
     private int getDisplayedEnchantmentLevel(
             Holder<Enchantment> enchantmentHolder
     ) {
@@ -565,27 +674,13 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
             return researchItem.getEnchantmentLevel(enchantmentHolder);
         }
 
-        return getPlayerKnowledgeLevel(enchantmentHolder);
+        return getLibraryKnowledgeLevel(enchantmentHolder);
     }
 
-    private int getPlayerKnowledgeLevel(
+    private int getLibraryKnowledgeLevel(
             Holder<Enchantment> enchantmentHolder
     ) {
-        Minecraft minecraft = Minecraft.getInstance();
-
-        if (minecraft.player == null) {
-            return 0;
-        }
-
-        ResourceLocation enchantmentId = getEnchantmentId(enchantmentHolder);
-
-        if (enchantmentId == null) {
-            return 0;
-        }
-
-        return minecraft.player
-                .getData(ModAttachments.PLAYER_KNOWLEDGE)
-                .getLevel(enchantmentId);
+        return this.menu.getLibraryLevel(enchantmentHolder);
     }
 
     private int getItemEnchantmentLevel(
@@ -603,10 +698,6 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
     private boolean isMaxed(int currentLevel, int maxLevel) {
         return currentLevel >= maxLevel;
     }
-
-    // -------------------------------------------------
-    // PAGE BUTTONS
-    // -------------------------------------------------
 
     private void renderPageControls(
             GuiGraphics guiGraphics,
@@ -706,10 +797,6 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
             );
         }
     }
-
-    // -------------------------------------------------
-    // CLICK HANDLING
-    // -------------------------------------------------
 
     @Override
     public boolean mouseClicked(
@@ -868,7 +955,7 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
             return false;
         }
 
-        int knowledgeLevel = getPlayerKnowledgeLevel(selectedEnchantment);
+        int knowledgeLevel = getLibraryKnowledgeLevel(selectedEnchantment);
         int maxLevel = Math.max(1, selectedEnchantment.value().getMaxLevel());
 
         if (isMaxed(knowledgeLevel, maxLevel)) {
@@ -918,7 +1005,7 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
             return false;
         }
 
-        int knowledgeLevel = getPlayerKnowledgeLevel(selectedEnchantment);
+        int knowledgeLevel = getLibraryKnowledgeLevel(selectedEnchantment);
         int itemLevel = getItemEnchantmentLevel(selectedEnchantment);
         int maxLevel = Math.max(1, selectedEnchantment.value().getMaxLevel());
 
@@ -936,10 +1023,6 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
 
         return true;
     }
-
-    // -------------------------------------------------
-    // SMALL UTILITY METHODS
-    // -------------------------------------------------
 
     private void clampCurrentPage(int totalPages) {
         if (this.enchantmentPage >= totalPages) {

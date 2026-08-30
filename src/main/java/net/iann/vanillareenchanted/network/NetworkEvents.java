@@ -25,5 +25,10 @@ public class NetworkEvents {
                 EnchantItemPayload.STREAM_CODEC,
                 ServerPayloadHandler::handleEnchantItem
         );
+        registrar.playToClient(
+                SyncLibraryKnowledgePayload.TYPE,
+                SyncLibraryKnowledgePayload.STREAM_CODEC,
+                ClientPayloadHandler::handleSyncLibraryKnowledge
+        );
     }
 }
