@@ -7,6 +7,7 @@ import net.iann.vanillareenchanted.enchantment.DuplicateBookDiscountHelper;
 import net.iann.vanillareenchanted.menu.ResearchTableMenu;
 import net.iann.vanillareenchanted.network.EnchantItemPayload;
 import net.iann.vanillareenchanted.network.ResearchEnchantmentPayload;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -17,8 +18,11 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.neoforged.neoforge.network.PacketDistributor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMenu> {
@@ -191,6 +195,23 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
 
     private ResourceLocation selectedEnchantmentId = null;
 
+    private static final ResourceLocation INCOMPATIBLE_CROSS_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(
+                    VanillaReenchanted.MODID,
+                    "textures/gui/icons/incompatible_cross.png"
+            );
+
+    private static final int INCOMPATIBLE_CROSS_SIZE = 7;
+    private static final int INCOMPATIBLE_CROSS_X_OFFSET = 3;
+    private static final int INCOMPATIBLE_CROSS_Y_OFFSET = 3;
+
+    // Temporary bookmark hover area.
+// Adjust these numbers if your bookmark is in a slightly different place.
+    private static final int BOOKMARK_TOOLTIP_X = 209;
+    private static final int BOOKMARK_TOOLTIP_Y = 174;
+    private static final int BOOKMARK_TOOLTIP_WIDTH = 10;
+    private static final int BOOKMARK_TOOLTIP_HEIGHT = 20;
+
     public ResearchTableScreen(
             ResearchTableMenu menu,
             Inventory playerInventory,
@@ -237,6 +258,8 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
 
         renderEnchantmentList(guiGraphics, mouseX, mouseY);
         renderSelectedEnchantmentDetails(guiGraphics);
+
+        renderCustomTooltips(guiGraphics, mouseX, mouseY);
 
         this.renderTooltip(guiGraphics, mouseX, mouseY);
     }
@@ -373,12 +396,15 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
 
             int displayedLevel = getDisplayedEnchantmentLevel(enchantmentHolder);
 
+            boolean incompatible = isIncompatibleWithCurrentItem(enchantmentHolder);
+
             renderEnchantmentRowText(
                     guiGraphics,
                     rowX,
                     rowY,
                     enchantmentHolder,
-                    displayedLevel
+                    displayedLevel,
+                    incompatible
             );
         }
 
@@ -438,9 +464,33 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
             int rowX,
             int rowY,
             Holder<Enchantment> enchantmentHolder,
-            int level
+            int level,
+            boolean incompatible
     ) {
-        Component levelText = Component.literal(String.valueOf(level));
+        if (incompatible) {
+            guiGraphics.blit(
+                    INCOMPATIBLE_CROSS_TEXTURE,
+                    rowX + INCOMPATIBLE_CROSS_X_OFFSET,
+                    rowY + INCOMPATIBLE_CROSS_Y_OFFSET,
+                    0,
+                    0,
+                    INCOMPATIBLE_CROSS_SIZE,
+                    INCOMPATIBLE_CROSS_SIZE,
+                    INCOMPATIBLE_CROSS_SIZE,
+                    INCOMPATIBLE_CROSS_SIZE
+            );
+        } else {
+            Component levelText = Component.literal(String.valueOf(level));
+
+            guiGraphics.drawString(
+                    this.font,
+                    levelText,
+                    rowX + ENCHANT_LEVEL_TEXT_X,
+                    rowY + ENCHANT_TEXT_Y,
+                    TEXT_COLOR,
+                    false
+            );
+        }
 
         Component fullEnchantmentName = Component.literal(
                 enchantmentHolder.value().description().getString()
@@ -449,15 +499,6 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
         Component enchantmentName = shortenTextToFit(
                 fullEnchantmentName,
                 ENCHANT_NAME_MAX_WIDTH
-        );
-
-        guiGraphics.drawString(
-                this.font,
-                levelText,
-                rowX + ENCHANT_LEVEL_TEXT_X,
-                rowY + ENCHANT_TEXT_Y,
-                TEXT_COLOR,
-                false
         );
 
         guiGraphics.drawString(
@@ -1135,5 +1176,193 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
                 && mouseX < x + width
                 && mouseY >= y
                 && mouseY < y + height;
+    }
+    private boolean isIncompatibleWithCurrentItem(
+            Holder<Enchantment> enchantmentHolder
+    ) {
+        ItemStack researchItem = this.menu.getResearchItem();
+
+        if (researchItem.isEmpty()) {
+            return false;
+        }
+
+        ItemEnchantments existingEnchantments =
+                EnchantmentHelper.getEnchantmentsForCrafting(researchItem);
+
+        for (var entry : existingEnchantments.entrySet()) {
+            Holder<Enchantment> existingEnchantment = entry.getKey();
+
+            if (existingEnchantment.equals(enchantmentHolder)) {
+                continue;
+            }
+
+            if (!Enchantment.areCompatible(
+                    existingEnchantment,
+                    enchantmentHolder
+            )) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private Holder<Enchantment> getHoveredIncompatibleEnchantment(
+            double mouseX,
+            double mouseY
+    ) {
+        List<Holder<Enchantment>> enchantments = this.menu.getVisibleEnchantments();
+
+        int firstIndex = this.enchantmentPage * ENCHANTMENTS_PER_PAGE;
+        int lastIndex = Math.min(firstIndex + ENCHANTMENTS_PER_PAGE, enchantments.size());
+
+        int rowX = this.leftPos + ENCHANT_ROW_X;
+
+        for (int enchantmentIndex = firstIndex; enchantmentIndex < lastIndex; enchantmentIndex++) {
+            Holder<Enchantment> enchantmentHolder = enchantments.get(enchantmentIndex);
+
+            if (!isIncompatibleWithCurrentItem(enchantmentHolder)) {
+                continue;
+            }
+
+            int rowIndexOnPage = enchantmentIndex - firstIndex;
+
+            int rowY = this.topPos
+                    + ENCHANT_ROW_Y
+                    + rowIndexOnPage * ENCHANT_ROW_SPACING;
+
+            if (isMouseOver(
+                    mouseX,
+                    mouseY,
+                    rowX,
+                    rowY,
+                    ENCHANT_ROW_WIDTH,
+                    ENCHANT_ROW_HEIGHT
+            )) {
+                return enchantmentHolder;
+            }
+        }
+
+        return null;
+    }
+    private void renderCustomTooltips(
+            GuiGraphics guiGraphics,
+            int mouseX,
+            int mouseY
+    ) {
+        Holder<Enchantment> incompatibleEnchantment =
+                getHoveredIncompatibleEnchantment(mouseX, mouseY);
+
+        if (incompatibleEnchantment != null) {
+            guiGraphics.renderTooltip(
+                    this.font,
+                    Component.literal("Incompatible").withStyle(ChatFormatting.RED),
+                    mouseX,
+                    mouseY
+            );
+
+            return;
+        }
+
+        if (isMouseOverBookmark(mouseX, mouseY)) {
+            Holder<Enchantment> selectedEnchantment = getSelectedEnchantment();
+
+            if (selectedEnchantment == null) {
+                return;
+            }
+
+            guiGraphics.renderComponentTooltip(
+                    this.font,
+                    getSelectedEnchantmentTooltip(selectedEnchantment),
+                    mouseX,
+                    mouseY
+            );
+        }
+    }
+    private boolean isMouseOverBookmark(
+            double mouseX,
+            double mouseY
+    ) {
+        return isMouseOver(
+                mouseX,
+                mouseY,
+                this.leftPos + BOOKMARK_TOOLTIP_X,
+                this.topPos + BOOKMARK_TOOLTIP_Y,
+                BOOKMARK_TOOLTIP_WIDTH,
+                BOOKMARK_TOOLTIP_HEIGHT
+        );
+    }
+
+    private List<Component> getSelectedEnchantmentTooltip(
+            Holder<Enchantment> enchantmentHolder
+    ) {
+        List<Component> tooltip = new ArrayList<>();
+
+        String enchantmentName = enchantmentHolder.value()
+                .description()
+                .getString();
+
+        tooltip.add(
+                Component.literal(enchantmentName)
+                        .withStyle(ChatFormatting.GOLD)
+        );
+
+        ResourceLocation enchantmentId = getEnchantmentId(enchantmentHolder);
+
+        if (enchantmentId != null) {
+            tooltip.add(
+                    Component.literal(enchantmentId.toString())
+                            .withStyle(ChatFormatting.DARK_GRAY)
+            );
+        }
+
+        if (isIncompatibleWithCurrentItem(enchantmentHolder)) {
+            tooltip.add(
+                    Component.literal("Incompatible with current item")
+                            .withStyle(ChatFormatting.RED)
+            );
+        }
+
+        addVanillaReenchantedExtraTooltipLines(
+                tooltip,
+                enchantmentId
+        );
+
+        return tooltip;
+    }
+
+    private void addVanillaReenchantedExtraTooltipLines(
+            List<Component> tooltip,
+            ResourceLocation enchantmentId
+    ) {
+        if (enchantmentId == null) {
+            return;
+        }
+
+        String id = enchantmentId.toString();
+
+        if (id.equals("minecraft:mending")) {
+            tooltip.add(
+                    Component.literal("Repairs while resting on armor stands or in item frames.")
+                            .withStyle(ChatFormatting.GRAY)
+            );
+
+            tooltip.add(
+                    Component.literal("No longer repairs from XP orbs.")
+                            .withStyle(ChatFormatting.GRAY)
+            );
+        }
+
+        if (id.equals("minecraft:protection")) {
+            tooltip.add(
+                    Component.literal("Chestplate only.")
+                            .withStyle(ChatFormatting.GRAY)
+            );
+
+            tooltip.add(
+                    Component.literal("Gives regenerating shield hearts.")
+                            .withStyle(ChatFormatting.GRAY)
+            );
+        }
     }
 }

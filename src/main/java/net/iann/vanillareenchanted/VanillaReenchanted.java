@@ -1,11 +1,15 @@
 package net.iann.vanillareenchanted;
 
+import net.iann.vanillareenchanted.client.event.ClientParticleEvents;
 import net.iann.vanillareenchanted.config.VRConfig;
 import net.iann.vanillareenchanted.event.AnvilEvents;
 import net.iann.vanillareenchanted.event.EnchantingTableEvents;
+import net.iann.vanillareenchanted.event.RestingMendingEvents;
 import net.iann.vanillareenchanted.event.VillagerTradeEvents;
 import net.iann.vanillareenchanted.network.NetworkEvents;
 import net.iann.vanillareenchanted.registry.*;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.loading.FMLEnvironment;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
@@ -54,10 +58,16 @@ public class VanillaReenchanted {
         ModItems.register(modEventBus);
         ModMenus.register(modEventBus);
         ModLootModifiers.register(modEventBus);
+        ModParticles.PARTICLES.register(modEventBus);
 
         NeoForge.EVENT_BUS.register(VillagerTradeEvents.class);
         NeoForge.EVENT_BUS.register(AnvilEvents.class);
         NeoForge.EVENT_BUS.register(EnchantingTableEvents.class);
+        NeoForge.EVENT_BUS.register(RestingMendingEvents.class);
+
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            modEventBus.addListener(ClientParticleEvents::registerParticleProviders);
+        }
 
         modContainer.registerConfig(ModConfig.Type.COMMON, VRConfig.SPEC);
 

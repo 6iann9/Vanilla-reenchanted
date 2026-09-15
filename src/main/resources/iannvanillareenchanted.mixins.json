@@ -3,7 +3,9 @@
   "package": "net.iann.vanillareenchanted.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "AnvilMenuMixin"
+    "AnvilMenuMixin",
+    "ExperienceOrbMixin",
+    "EnchantingTableBlockMixin"
   ],
   "client": [
     "AnvilScreenMixin"
