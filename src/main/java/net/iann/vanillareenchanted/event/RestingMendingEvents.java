@@ -1,11 +1,10 @@
 package net.iann.vanillareenchanted.event;
 
-import net.iann.vanillareenchanted.VanillaReenchanted;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.Direction;
+import net.iann.vanillareenchanted.enchantment.RestingMendingHelper;
+import net.iann.vanillareenchanted.mixin.ItemFrameMendingAccess;
 import net.minecraft.world.phys.Vec3;
 import net.iann.vanillareenchanted.registry.ModParticles;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
@@ -13,15 +12,10 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.decoration.ItemFrame;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
-import net.minecraft.world.item.enchantment.Enchantments;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
 
 public class RestingMendingEvents {
-    private static final int CHECK_INTERVAL_TICKS = 20;
-    private static final int TICKS_PER_REPAIR = 20 * 10;
-    private static final long MAX_CATCH_UP_TICKS = 24000L * 3L;
 
     // Spread values are half-extents in blocks: 0.45 means +/-0.45 (0.9 total).
     private static final int ARMOR_PARTICLES_PER_SLOT = 3;
@@ -46,9 +40,6 @@ public class RestingMendingEvents {
     // Positive values move particles outward from the frame, away from the wall.
     private static final double FRAME_FRONT_OFFSET = 0.08D;
 
-    private static final String LAST_RESTING_MENDING_CHECK_TAG =
-            VanillaReenchanted.MODID + ".LastRestingMendingCheck";
-
     @SubscribeEvent
     public static void onEntityTick(EntityTickEvent.Post event) {
         Entity entity = event.getEntity();
@@ -57,7 +48,7 @@ public class RestingMendingEvents {
             return;
         }
 
-        if (level.getGameTime() % CHECK_INTERVAL_TICKS != 0) {
+        if (level.getGameTime() % RestingMendingHelper.CHECK_INTERVAL_TICKS != 0) {
             return;
         }
 
@@ -85,10 +76,10 @@ public class RestingMendingEvents {
             return;
         }
 
-        tickRestingMendingItem(level, stack);
+        RestingMendingHelper.updateRestingMending(armorStand, slot.getName(), stack, level.getGameTime());
 
         // Show ongoing repair, including the wait between durability gains.
-        if (stack.isDamageableItem() && stack.isDamaged() && hasMending(stack)) {
+        if (RestingMendingHelper.isRepairing(stack)) {
             spawnRestingMendingParticlesAtArmorSlot(level, armorStand, heightPercent);
         }
     }
@@ -100,93 +91,15 @@ public class RestingMendingEvents {
             return;
         }
 
-        tickRestingMendingItem(level, stack);
+        if (RestingMendingHelper.updateRestingMending(itemFrame, "item", stack, level.getGameTime())) {
+            // In-place ItemStack changes do not dirty the frame's synced item automatically.
+            itemFrame.getEntityData().set(ItemFrameMendingAccess.vr$itemData(), stack, true);
+        }
 
         // Show ongoing repair, including the wait between durability gains.
-        if (stack.isDamageableItem() && stack.isDamaged() && hasMending(stack)) {
+        if (RestingMendingHelper.isRepairing(stack)) {
             spawnRestingMendingParticlesAtItemFrame(level, itemFrame);
         }
-    }
-
-    private static void tickRestingMendingItem(ServerLevel level, ItemStack stack) {
-        if (stack.isEmpty()) {
-            return;
-        }
-
-        if (!stack.isDamageableItem()) {
-            clearLastCheck(stack);
-            return;
-        }
-
-        if (!hasMending(stack)) {
-            clearLastCheck(stack);
-            return;
-        }
-
-        long currentTime = level.getGameTime();
-
-        if (!stack.isDamaged()) {
-            rememberCheckTime(stack, currentTime);
-            return;
-        }
-
-        long lastCheckTime = getLastCheckTime(stack);
-
-        if (lastCheckTime <= 0L || lastCheckTime > currentTime) {
-            rememberCheckTime(stack, currentTime);
-            return;
-        }
-
-        long elapsedTicks = currentTime - lastCheckTime;
-        long cappedElapsedTicks = Math.min(elapsedTicks, MAX_CATCH_UP_TICKS);
-
-        int durabilityToRepair = (int) (cappedElapsedTicks / TICKS_PER_REPAIR);
-
-        if (durabilityToRepair <= 0) {
-            return;
-        }
-
-        int newDamageValue = Math.max(0, stack.getDamageValue() - durabilityToRepair);
-        stack.setDamageValue(newDamageValue);
-
-        long usedTicks = (long) durabilityToRepair * TICKS_PER_REPAIR;
-        rememberCheckTime(stack, lastCheckTime + usedTicks);
-    }
-
-    private static boolean hasMending(ItemStack stack) {
-        return stack.getEnchantments().keySet().stream()
-                .anyMatch(enchantmentHolder -> enchantmentHolder.is(Enchantments.MENDING));
-    }
-
-    private static long getLastCheckTime(ItemStack stack) {
-        CustomData customData = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
-        CompoundTag tag = customData.copyTag();
-
-        if (!tag.contains(LAST_RESTING_MENDING_CHECK_TAG)) {
-            return -1L;
-        }
-
-        return tag.getLong(LAST_RESTING_MENDING_CHECK_TAG);
-    }
-
-    private static void rememberCheckTime(ItemStack stack, long gameTime) {
-        CustomData customData = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
-        CompoundTag tag = customData.copyTag();
-
-        tag.putLong(LAST_RESTING_MENDING_CHECK_TAG, gameTime);
-        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
-    }
-
-    private static void clearLastCheck(ItemStack stack) {
-        CustomData customData = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
-        CompoundTag tag = customData.copyTag();
-
-        if (!tag.contains(LAST_RESTING_MENDING_CHECK_TAG)) {
-            return;
-        }
-
-        tag.remove(LAST_RESTING_MENDING_CHECK_TAG);
-        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
 
     private static void spawnRestingMendingParticlesAtArmorSlot(ServerLevel level, ArmorStand armorStand, double heightPercent) {

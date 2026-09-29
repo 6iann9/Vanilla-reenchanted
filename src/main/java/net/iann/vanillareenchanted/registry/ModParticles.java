@@ -12,6 +12,12 @@ public class ModParticles {
     public static final DeferredRegister<ParticleType<?>> PARTICLES =
             DeferredRegister.create(BuiltInRegistries.PARTICLE_TYPE, VanillaReenchanted.MODID);
 
+    public static final Supplier<SimpleParticleType> SWEEP_SLASH =
+            PARTICLES.register("sweep_slash", () -> new SimpleParticleType(false));
+
+    public static final Supplier<SimpleParticleType> ECHO_IMPACT_RING =
+            PARTICLES.register("echo_impact_ring", () -> new SimpleParticleType(false));
+
     public static final Supplier<SimpleParticleType> RESTING_MENDING =
             PARTICLES.register("resting_mending", () -> new SimpleParticleType(false));
 }

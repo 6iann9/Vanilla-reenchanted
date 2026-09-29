@@ -1,5 +1,7 @@
 package net.iann.vanillareenchanted.menu;
 
+import net.iann.vanillareenchanted.enchantment.RestrictedEnchantments;
+
 import net.iann.vanillareenchanted.VanillaReenchanted;
 import net.iann.vanillareenchanted.library.LibraryScanner;
 import net.iann.vanillareenchanted.network.LibraryKnowledgeSync;
@@ -546,6 +548,7 @@ public class ResearchTableMenu extends AbstractContainerMenu {
                 .registryAccess()
                 .registryOrThrow(Registries.ENCHANTMENT)
                 .holders()
+                .filter(holder -> !RestrictedEnchantments.isRestricted(holder))
                 .map(holder -> (Holder<Enchantment>) holder)
                 .toList();
     }

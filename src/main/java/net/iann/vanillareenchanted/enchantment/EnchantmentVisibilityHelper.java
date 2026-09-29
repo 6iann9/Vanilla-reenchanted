@@ -1,5 +1,7 @@
 package net.iann.vanillareenchanted.enchantment;
 
+import net.iann.vanillareenchanted.enchantment.RestrictedEnchantments;
+
 import net.iann.vanillareenchanted.registry.ModAttachments;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
@@ -28,7 +30,7 @@ public class EnchantmentVisibilityHelper {
         for (Holder.Reference<Enchantment> enchantmentHolder : enchantmentRegistry.holders().toList()) {
             Optional<ResourceLocation> enchantmentId = getEnchantmentId(enchantmentHolder);
 
-            if (enchantmentId.isEmpty()) {
+            if (enchantmentId.isEmpty() || RestrictedEnchantments.isRestricted(enchantmentHolder)) {
                 continue;
             }
 

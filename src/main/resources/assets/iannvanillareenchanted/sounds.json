@@ -1,0 +1,19 @@
+{
+  "momentum_proc": {
+    "subtitle": "subtitles.iannvanillareenchanted.momentum_proc",
+    "sounds": [
+      "iannvanillareenchanted:enchantment/momentum_proc_01",
+      "iannvanillareenchanted:enchantment/momentum_proc_02",
+      "iannvanillareenchanted:enchantment/momentum_proc_03"
+    ]
+  },
+  "echoing_edge_impact": {
+    "subtitle": "subtitles.iannvanillareenchanted.echoing_edge_impact",
+    "sounds": [
+      "iannvanillareenchanted:enchantment/echoing_edge_impact_01",
+      "iannvanillareenchanted:enchantment/echoing_edge_impact_02",
+      "iannvanillareenchanted:enchantment/echoing_edge_impact_03",
+      "iannvanillareenchanted:enchantment/echoing_edge_impact_04"
+    ]
+  }
+}

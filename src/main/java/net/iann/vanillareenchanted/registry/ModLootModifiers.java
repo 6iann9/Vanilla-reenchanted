@@ -24,6 +24,9 @@ public class ModLootModifiers {
                     () -> NormalizeEnchantedBooksLootModifier.CODEC
             );
 
+    public static final Supplier<MapCodec<net.iann.vanillareenchanted.loot.EchoingEdgeLootModifier>> ECHOING_EDGE =
+            GLOBAL_LOOT_MODIFIER_SERIALIZERS.register("echoing_edge", () -> net.iann.vanillareenchanted.loot.EchoingEdgeLootModifier.CODEC);
+
     public static void register(IEventBus eventBus) {
         GLOBAL_LOOT_MODIFIER_SERIALIZERS.register(eventBus);
     }

@@ -27,7 +27,16 @@ sourceSets.main.resources {
 }
 
 repositories {
-    // Add here additional repositories if required by some of the dependencies below.
+    maven {
+        name = 'PlayerAnimationLibrary'
+        url = 'https://repo.redlance.org/public'
+        content { includeGroup 'com.zigythebird.playeranim' }
+    }
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
 }
 
 base {
@@ -118,6 +127,22 @@ configurations {
 }
 
 dependencies {
+    // PAL contains its core classes and nested support libraries. Bundle the mod once.
+    jarJar(implementation('com.zigythebird.playeranim:PlayerAnimationLibNeo')) {
+        version {
+            strictly '[1.1.6+mc.1.21.1,1.2)'
+            prefer '1.1.6+mc.1.21.1'
+        }
+        transitive = false
+    }
+    // Optional development mods for testing bookmark descriptions (NeoForge 1.21.1).
+    // Pinned Modrinth release IDs: EnchDesc 21.1.9, Bookshelf 21.1.81, Prickle 21.1.11.
+    localRuntime 'maven.modrinth:enchantment-descriptions:zfAkJn0r'
+    localRuntime 'maven.modrinth:bookshelf-lib:1sdJl7J1'
+    localRuntime 'maven.modrinth:prickle:EE1FHDyD'
+    // Floating damage numbers for development combat testing (NeoForge 1.21.1).
+    localRuntime 'maven.modrinth:damagenumbers:UhaoW1JM'
+
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"

@@ -1,6 +1,6 @@
 package net.iann.vanillareenchanted;
 
-import net.minecraft.client.Minecraft;
+import net.iann.vanillareenchanted.client.WindUpAnimations;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
@@ -24,8 +24,6 @@ public class ExampleModClient {
 
     @SubscribeEvent
     static void onClientSetup(FMLClientSetupEvent event) {
-        // Some client setup code
-        VanillaReenchanted.LOGGER.info("HELLO FROM CLIENT SETUP");
-        VanillaReenchanted.LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
+        event.enqueueWork(WindUpAnimations::register);
     }
 }

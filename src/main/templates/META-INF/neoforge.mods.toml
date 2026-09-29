@@ -96,3 +96,10 @@ config="iannvanillareenchanted.mixins.json"
 # stop your mod loading on the server for example.
 #[features.${mod_id}]
 #openGLVersion="[3.2,)"
+
+[[dependencies.iannvanillareenchanted]]
+    modId="player_animation_library"
+    type="required"
+    versionRange="[1.1.6+mc.1.21.1,1.2)"
+    ordering="AFTER"
+    side="CLIENT"

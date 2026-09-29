@@ -2,6 +2,7 @@ package net.iann.vanillareenchanted.registry;
 
 import net.iann.vanillareenchanted.VanillaReenchanted;
 import net.iann.vanillareenchanted.enchantment.PlayerKnowledgeData;
+import net.iann.vanillareenchanted.enchantment.ProtectionShieldData;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.attachment.AttachmentType;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -19,6 +20,11 @@ public class ModAttachments {
                     () -> AttachmentType.builder(PlayerKnowledgeData::new)
                             .build()
             );
+
+    // No persistence or copy-on-death: reconnecting or respawning starts the shield empty.
+    public static final Supplier<AttachmentType<ProtectionShieldData>> PROTECTION_SHIELD =
+            ATTACHMENT_TYPES.register("protection_shield",
+                    () -> AttachmentType.builder(ProtectionShieldData::new).build());
 
     public static void register(IEventBus eventBus) {
         ATTACHMENT_TYPES.register(eventBus);

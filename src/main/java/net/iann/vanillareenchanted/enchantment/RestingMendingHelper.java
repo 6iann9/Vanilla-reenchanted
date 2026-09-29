@@ -1,152 +1,70 @@
 package net.iann.vanillareenchanted.enchantment;
 
-import net.minecraft.core.Holder;
-import net.minecraft.core.component.DataComponents;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.Enchantments;
 
-import java.util.Optional;
+/** Saved display timers allow unloaded-chunk repair without crediting time in inventories. */
+public final class RestingMendingHelper {
+    public static final int CHECK_INTERVAL_TICKS = 20;
+    public static final int FULL_REPAIR_TICKS = 20 * 60 * 60 * 3;
+    private static final String TAG = "iannvanillareenchanted.RestingMending.";
 
-public class RestingMendingHelper {
+    public static boolean isRepairing(ItemStack stack) {
+        return stack.isDamageableItem() && stack.isDamaged()
+                && stack.getEnchantments().keySet().stream().anyMatch(holder -> holder.is(Enchantments.MENDING));
+    }
 
-    private static final ResourceLocation MENDING_ID =
-            ResourceLocation.withDefaultNamespace("mending");
+    /** A newly inserted item starts now, even if it previously rested in this same display. */
+    public static void beginResting(Entity display, String slot, ItemStack stack) {
+        if (display.level().isClientSide) return;
+        display.getPersistentData().remove(TAG + slot);
+        updateRestingMending(display, slot, stack, display.level().getGameTime());
+    }
 
-    private static final String TAG_ROOT = "VanillaReenchanted";
-    private static final String TAG_LAST_MENDING_CHECK = "LastRestingMendingCheck";
-
-    private static final int TICKS_PER_REPAIR = 20;
-    private static final long MAX_CATCH_UP_TICKS = 24000L * 3L;
-
-    public static void updateRestingMending(
-            ItemStack stack,
-            long currentGameTime
-    ) {
-        if (stack.isEmpty()) {
-            return;
+    /** Returns true only when durability changed. Entity persistent data survives chunk unloading. */
+    public static boolean updateRestingMending(Entity display, String slot, ItemStack stack, long time) {
+        if (display.level().isClientSide) return false;
+        var data = display.getPersistentData();
+        String key = TAG + slot;
+        if (!isRepairing(stack)) {
+            data.remove(key);
+            return false;
         }
-
+        var progress = data.getCompound(key);
+        long last = progress.getLong("LastCheck");
+        if (!progress.contains("LastCheck") || last < 0 || last > time
+                || progress.getInt("Damage") != stack.getDamageValue()
+                || progress.contains("MaxDamage") && progress.getInt("MaxDamage") != stack.getMaxDamage()) {
+            remember(display, key, time, stack);
+            return false;
+        }
+        long elapsed = time - last;
+        // Bound elapsed before multiplication: one full repair period already repairs any item.
+        // Integer remainder stores exact fractional durability across checks and save/reloads.
+        long fraction = Math.clamp(progress.getLong("Fraction"), 0L, FULL_REPAIR_TICKS - 1L);
+        long earned = Math.min(elapsed, FULL_REPAIR_TICKS) * stack.getMaxDamage() + fraction;
+        int repair = (int) Math.min(stack.getDamageValue(), earned / FULL_REPAIR_TICKS);
+        if (repair > 0) stack.setDamageValue(stack.getDamageValue() - repair);
         if (!stack.isDamaged()) {
-            rememberCheckTime(stack, currentGameTime);
-            return;
-        }
-
-        if (!hasMending(stack)) {
-            clearCheckTime(stack);
-            return;
-        }
-
-        long lastCheckTime = getLastCheckTime(stack);
-
-        if (lastCheckTime <= 0L || lastCheckTime > currentGameTime) {
-            rememberCheckTime(stack, currentGameTime);
-            return;
-        }
-
-        long elapsedTicks = currentGameTime - lastCheckTime;
-
-        if (elapsedTicks <= 0L) {
-            return;
-        }
-
-        elapsedTicks = Math.min(elapsedTicks, MAX_CATCH_UP_TICKS);
-
-        int repairAmount = (int) (elapsedTicks / TICKS_PER_REPAIR);
-
-        if (repairAmount <= 0) {
-            return;
-        }
-
-        int currentDamage = stack.getDamageValue();
-        int newDamage = Math.max(0, currentDamage - repairAmount);
-
-        stack.setDamageValue(newDamage);
-
-        long usedTicks = (long) repairAmount * TICKS_PER_REPAIR;
-
-        rememberCheckTime(
-                stack,
-                currentGameTime - Math.max(0L, elapsedTicks - usedTicks)
-        );
-    }
-
-    private static boolean hasMending(ItemStack stack) {
-        return EnchantmentHelper.getEnchantmentsForCrafting(stack)
-                .entrySet()
-                .stream()
-                .anyMatch(entry -> {
-                    Holder<Enchantment> holder = entry.getKey();
-
-                    Optional<ResourceLocation> enchantmentId =
-                            holder.unwrapKey().map(key -> key.location());
-
-                    return enchantmentId
-                            .map(MENDING_ID::equals)
-                            .orElse(false);
-                });
-    }
-
-    private static long getLastCheckTime(ItemStack stack) {
-        CompoundTag customData = stack.getOrDefault(
-                DataComponents.CUSTOM_DATA,
-                net.minecraft.world.item.component.CustomData.EMPTY
-        ).copyTag();
-
-        if (!customData.contains(TAG_ROOT)) {
-            return 0L;
-        }
-
-        CompoundTag modTag = customData.getCompound(TAG_ROOT);
-
-        return modTag.getLong(TAG_LAST_MENDING_CHECK);
-    }
-
-    private static void rememberCheckTime(
-            ItemStack stack,
-            long currentGameTime
-    ) {
-        CompoundTag customData = stack.getOrDefault(
-                DataComponents.CUSTOM_DATA,
-                net.minecraft.world.item.component.CustomData.EMPTY
-        ).copyTag();
-
-        CompoundTag modTag = customData.getCompound(TAG_ROOT);
-
-        modTag.putLong(TAG_LAST_MENDING_CHECK, currentGameTime);
-        customData.put(TAG_ROOT, modTag);
-
-        stack.set(
-                DataComponents.CUSTOM_DATA,
-                net.minecraft.world.item.component.CustomData.of(customData)
-        );
-    }
-
-    private static void clearCheckTime(ItemStack stack) {
-        CompoundTag customData = stack.getOrDefault(
-                DataComponents.CUSTOM_DATA,
-                net.minecraft.world.item.component.CustomData.EMPTY
-        ).copyTag();
-
-        if (!customData.contains(TAG_ROOT)) {
-            return;
-        }
-
-        CompoundTag modTag = customData.getCompound(TAG_ROOT);
-        modTag.remove(TAG_LAST_MENDING_CHECK);
-
-        if (modTag.isEmpty()) {
-            customData.remove(TAG_ROOT);
+            data.remove(key); // Full items cannot bank time against future damage.
         } else {
-            customData.put(TAG_ROOT, modTag);
+            progress.putLong("LastCheck", time);
+            progress.putLong("Fraction", earned % FULL_REPAIR_TICKS);
+            progress.putInt("Damage", stack.getDamageValue());
+            progress.putInt("MaxDamage", stack.getMaxDamage());
         }
-
-        stack.set(
-                DataComponents.CUSTOM_DATA,
-                net.minecraft.world.item.component.CustomData.of(customData)
-        );
+        return repair > 0;
     }
+
+    private static void remember(Entity display, String key, long time, ItemStack stack) {
+        var progress = new CompoundTag();
+        progress.putLong("LastCheck", time);
+        progress.putInt("Damage", stack.getDamageValue());
+        progress.putInt("MaxDamage", stack.getMaxDamage());
+        display.getPersistentData().put(key, progress);
+    }
+
+    private RestingMendingHelper() {}
 }

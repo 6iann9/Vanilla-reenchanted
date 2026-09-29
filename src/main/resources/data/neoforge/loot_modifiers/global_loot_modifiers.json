@@ -1,6 +1,7 @@
 {
   "replace": false,
   "entries": [
-    "iannvanillareenchanted:normalize_enchanted_books"
+    "iannvanillareenchanted:normalize_enchanted_books",
+    "iannvanillareenchanted:echoing_edge"
   ]
 }

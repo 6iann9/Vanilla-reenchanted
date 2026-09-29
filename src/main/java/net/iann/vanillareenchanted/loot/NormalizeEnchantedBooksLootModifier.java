@@ -1,5 +1,6 @@
 package net.iann.vanillareenchanted.loot;
 
+
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;

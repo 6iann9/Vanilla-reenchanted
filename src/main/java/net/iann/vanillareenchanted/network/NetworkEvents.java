@@ -9,6 +9,16 @@ public class NetworkEvents {
 
     public static void registerPayloads(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar registrar = event.registrar(VanillaReenchanted.MODID);
+        registrar.playToClient(SyncChannelingPayload.TYPE, SyncChannelingPayload.STREAM_CODEC, SyncChannelingPayload::handle);
+        registrar.playToClient(SyncRiptidePayload.TYPE, SyncRiptidePayload.STREAM_CODEC, SyncRiptidePayload::handle);
+        registrar.playToClient(SyncWindBurstPayload.TYPE, SyncWindBurstPayload.STREAM_CODEC, SyncWindBurstPayload::handle);
+        registrar.playToClient(SyncWindUpCooldownPayload.TYPE, SyncWindUpCooldownPayload.STREAM_CODEC, SyncWindUpCooldownPayload::handle);
+        registrar.playToClient(SyncWindUpPayload.TYPE, SyncWindUpPayload.STREAM_CODEC, SyncWindUpPayload::handle);
+        registrar.playToServer(WindUpPayload.TYPE, WindUpPayload.STREAM_CODEC, WindUpPayload::handle);
+        registrar.playToClient(SyncMomentumPayload.TYPE, SyncMomentumPayload.STREAM_CODEC, SyncMomentumPayload::handle);
+
+        registrar.playToClient(SyncProtectionShieldPayload.TYPE, SyncProtectionShieldPayload.STREAM_CODEC,
+                SyncProtectionShieldPayload::handle);
 
         registrar.playToClient(
                 SyncPlayerKnowledgePayload.TYPE,

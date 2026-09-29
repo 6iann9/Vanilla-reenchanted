@@ -1,6 +1,8 @@
 package net.iann.vanillareenchanted.screen;
 
 import net.iann.vanillareenchanted.VanillaReenchanted;
+import net.iann.vanillareenchanted.client.EnchantmentDescriptionHelper;
+import net.minecraft.util.FormattedCharSequence;
 import net.iann.vanillareenchanted.cost.EnchantmentCostCalculator;
 import net.iann.vanillareenchanted.cost.EnvironmentCostModifier;
 import net.iann.vanillareenchanted.enchantment.DuplicateBookDiscountHelper;
@@ -205,8 +207,9 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
     private static final int INCOMPATIBLE_CROSS_X_OFFSET = 3;
     private static final int INCOMPATIBLE_CROSS_Y_OFFSET = 3;
 
-    // Temporary bookmark hover area.
-// Adjust these numbers if your bookmark is in a slightly different place.
+    // Bookmark hover area.
+    // Adjust these values to match the bookmark artwork.
+    private static final int BOOKMARK_TOOLTIP_MAX_WIDTH = 220;
     private static final int BOOKMARK_TOOLTIP_X = 209;
     private static final int BOOKMARK_TOOLTIP_Y = 174;
     private static final int BOOKMARK_TOOLTIP_WIDTH = 10;
@@ -1256,7 +1259,7 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
         if (incompatibleEnchantment != null) {
             guiGraphics.renderTooltip(
                     this.font,
-                    Component.literal("Incompatible").withStyle(ChatFormatting.RED),
+                    Component.translatable("tooltip.iannvanillareenchanted.incompatible").withStyle(ChatFormatting.RED),
                     mouseX,
                     mouseY
             );
@@ -1271,12 +1274,12 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
                 return;
             }
 
-            guiGraphics.renderComponentTooltip(
-                    this.font,
-                    getSelectedEnchantmentTooltip(selectedEnchantment),
-                    mouseX,
-                    mouseY
-            );
+            int wrapWidth = Math.min(BOOKMARK_TOOLTIP_MAX_WIDTH, Math.max(40, this.width - 24));
+            List<FormattedCharSequence> lines = new ArrayList<>();
+            for (Component line : getSelectedEnchantmentTooltip(selectedEnchantment)) {
+                lines.addAll(this.font.split(line, wrapWidth));
+            }
+            guiGraphics.renderTooltip(this.font, lines, mouseX, mouseY);
         }
     }
     private boolean isMouseOverBookmark(
@@ -1297,72 +1300,20 @@ public class ResearchTableScreen extends AbstractContainerScreen<ResearchTableMe
             Holder<Enchantment> enchantmentHolder
     ) {
         List<Component> tooltip = new ArrayList<>();
-
-        String enchantmentName = enchantmentHolder.value()
-                .description()
-                .getString();
-
-        tooltip.add(
-                Component.literal(enchantmentName)
-                        .withStyle(ChatFormatting.GOLD)
-        );
+        tooltip.add(enchantmentHolder.value().description().copy().withStyle(ChatFormatting.GOLD));
 
         ResourceLocation enchantmentId = getEnchantmentId(enchantmentHolder);
-
-        if (enchantmentId != null) {
-            tooltip.add(
-                    Component.literal(enchantmentId.toString())
-                            .withStyle(ChatFormatting.DARK_GRAY)
-            );
+        if (enchantmentId != null && this.minecraft.options.advancedItemTooltips) {
+            tooltip.add(Component.literal(enchantmentId.toString()).withStyle(ChatFormatting.DARK_GRAY));
         }
 
         if (isIncompatibleWithCurrentItem(enchantmentHolder)) {
-            tooltip.add(
-                    Component.literal("Incompatible with current item")
-                            .withStyle(ChatFormatting.RED)
-            );
+            tooltip.add(Component.translatable("tooltip.iannvanillareenchanted.incompatible_item")
+                    .withStyle(ChatFormatting.RED));
         }
 
-        addVanillaReenchantedExtraTooltipLines(
-                tooltip,
-                enchantmentId
-        );
-
+        tooltip.add(EnchantmentDescriptionHelper.getDescription(enchantmentId)
+                .copy().withStyle(ChatFormatting.GRAY));
         return tooltip;
-    }
-
-    private void addVanillaReenchantedExtraTooltipLines(
-            List<Component> tooltip,
-            ResourceLocation enchantmentId
-    ) {
-        if (enchantmentId == null) {
-            return;
-        }
-
-        String id = enchantmentId.toString();
-
-        if (id.equals("minecraft:mending")) {
-            tooltip.add(
-                    Component.literal("Repairs while resting on armor stands or in item frames.")
-                            .withStyle(ChatFormatting.GRAY)
-            );
-
-            tooltip.add(
-                    Component.literal("No longer repairs from XP orbs.")
-                            .withStyle(ChatFormatting.GRAY)
-            );
-        }
-
-        if (id.equals("minecraft:protection")) {
-            tooltip.add(
-                    Component.literal("Chestplate only.")
-                            .withStyle(ChatFormatting.GRAY)
-            );
-
-            tooltip.add(
-                    Component.literal("Gives regenerating shield hearts.")
-                            .withStyle(ChatFormatting.GRAY)
-            );
-        }
     }
 }

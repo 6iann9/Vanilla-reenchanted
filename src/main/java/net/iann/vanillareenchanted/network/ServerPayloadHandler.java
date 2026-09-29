@@ -1,5 +1,7 @@
 package net.iann.vanillareenchanted.network;
 
+import net.iann.vanillareenchanted.enchantment.RestrictedEnchantments;
+
 import net.iann.vanillareenchanted.cost.EnchantmentCostCalculator;
 import net.iann.vanillareenchanted.cost.EnvironmentCostModifier;
 import net.iann.vanillareenchanted.enchantment.DuplicateBookDiscountHelper;
@@ -47,6 +49,7 @@ public class ServerPayloadHandler {
         }
 
         ResourceLocation enchantmentId = payload.enchantmentId();
+        if (RestrictedEnchantments.isRestricted(enchantmentId)) return;
 
         Registry<Enchantment> enchantmentRegistry =
                 serverPlayer.registryAccess().registryOrThrow(Registries.ENCHANTMENT);
@@ -237,6 +240,7 @@ public class ServerPayloadHandler {
         }
 
         ResourceLocation enchantmentId = payload.enchantmentId();
+        if (RestrictedEnchantments.isRestricted(enchantmentId)) return;
 
         Registry<Enchantment> enchantmentRegistry =
                 serverPlayer.registryAccess().registryOrThrow(Registries.ENCHANTMENT);
