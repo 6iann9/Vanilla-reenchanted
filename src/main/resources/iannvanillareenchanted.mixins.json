@@ -3,6 +3,11 @@
   "package": "net.iann.vanillareenchanted.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "ElusiveHorseMixin",
+    "ElusiveFluidMixin",
+    "ElusiveBlockCollisionMixin",
+    "ElusiveBushMixin",
+    "ElusivePowderSnowMixin",
     "ChannelingLightningMixin",
     "ChannelingEntityFireMixin",
     "LoyaltyHitMixin",
@@ -23,15 +28,17 @@
     "MomentumHorseMixin",
     "MomentumMovementMixin",
     "MomentumCollisionAccess",
-    "MomentumAirStepMixin",
+    "HighStepAirStepMixin",
     "HorseArmorStackMixin",
     "ExperienceOrbMixin",
     "EnchantingTableBlockMixin",
     "ShockwaveMaceParticlesMixin",
     "EchoingEdgeAttackMixin",
-    "SweepSlashMixin"
+    "SweepSlashMixin",
+    "SweepDamageAccess"
   ],
   "client": [
+    "SweepMissInputMixin",
     "TridentCooldownOverlayMixin",
     "AnvilScreenMixin",
     "WindUpUseMixin",

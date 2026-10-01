@@ -9,7 +9,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.event.entity.player.CriticalHitEvent;
-import net.neoforged.neoforge.event.entity.player.SweepAttackEvent;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
@@ -24,13 +23,6 @@ public abstract class EchoingEdgeAttackMixin {
     private CriticalHitEvent vr$crit(Player player, Entity target, boolean vanilla, float multiplier, Operation<CriticalHitEvent> original) {
         var event = original.call(player, target, vanilla, multiplier);
         if (EchoingEdge.current() != null) EchoingEdge.current().critical = event.isCriticalHit();
-        return event;
-    }
-
-    @WrapOperation(method="attack", at=@At(value="INVOKE", target="Lnet/neoforged/neoforge/common/CommonHooks;fireSweepAttack(Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/entity/Entity;Z)Lnet/neoforged/neoforge/event/entity/player/SweepAttackEvent;"))
-    private SweepAttackEvent vr$sweep(Player player, Entity target, boolean vanilla, Operation<SweepAttackEvent> original) {
-        var event = original.call(player, target, vanilla);
-        if (EchoingEdge.current() != null) EchoingEdge.current().sweeping = event.isSweeping();
         return event;
     }
 

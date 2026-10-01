@@ -77,6 +77,7 @@ public class VanillaReenchanted {
         NeoForge.EVENT_BUS.register(net.iann.vanillareenchanted.event.EchoingEdgeEvents.class);
         NeoForge.EVENT_BUS.register(net.iann.vanillareenchanted.event.MomentumEvents.class);
         NeoForge.EVENT_BUS.register(net.iann.vanillareenchanted.event.HighStepEvents.class);
+        NeoForge.EVENT_BUS.register(net.iann.vanillareenchanted.enchantment.Elusive.class);
         NeoForge.EVENT_BUS.register(net.iann.vanillareenchanted.event.SoulSpeedEvents.class);
         NeoForge.EVENT_BUS.register(net.iann.vanillareenchanted.event.RiptideEvents.class);
         NeoForge.EVENT_BUS.register(net.iann.vanillareenchanted.event.ChannelingEvents.class);

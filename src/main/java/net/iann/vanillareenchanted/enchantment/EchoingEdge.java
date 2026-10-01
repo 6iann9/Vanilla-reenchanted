@@ -27,7 +27,7 @@ public final class EchoingEdge {
         public final Entity primary;
         public final ItemStack sword;
         public final int level, charges;
-        public boolean critical, sweeping;
+        public boolean critical;
         public Entity activeTarget;
         public Vec3 impactPosition;
         public final Set<Entity> hits = new HashSet<>();
@@ -108,7 +108,7 @@ public final class EchoingEdge {
             player.serverLevel().playSound(null, pos.x, pos.y, pos.z, ModSounds.ECHOING_EDGE_IMPACT.get(),
                     player.getSoundSource(), 0.7F + 0.1F * attack.charges, 1);
         } else {
-            int charges = Math.min(MAX_CHARGES, attack.charges + (attack.sweeping && !attack.critical ? attack.hits.size() : 0));
+            int charges = Math.min(MAX_CHARGES, attack.charges + (!attack.critical ? attack.hits.size() : 0));
             if (charges > 0) store(attack.sword, charges, time);
         }
     }

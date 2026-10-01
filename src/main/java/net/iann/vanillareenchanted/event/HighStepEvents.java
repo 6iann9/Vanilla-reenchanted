@@ -9,6 +9,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.horse.AbstractHorse;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
 
@@ -22,6 +23,14 @@ public final class HighStepEvents {
         return stack.getEnchantments().entrySet().stream().anyMatch(entry ->
                 entry.getIntValue() > 0 && entry.getKey().unwrapKey()
                         .map(key -> key.location().equals(HIGH_STEP)).orElse(false));
+    }
+
+    public static boolean canAirStep(AbstractHorse horse, Vec3 movement) {
+        return horse.isAlive() && !horse.onGround() && movement.y <= 0
+                && movement.horizontalDistanceSqr() > 1.0E-8
+                && horse.getControllingPassenger() instanceof Player rider && rider.zza > 0
+                && !horse.isInWaterOrBubble() && !horse.isInLava()
+                && enchanted(horse.getItemBySlot(EquipmentSlot.BODY));
     }
 
     @SubscribeEvent

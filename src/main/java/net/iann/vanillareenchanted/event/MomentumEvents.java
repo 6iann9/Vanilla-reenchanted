@@ -137,13 +137,6 @@ public final class MomentumEvents {
                     ModSounds.MOMENTUM_PROC.get(), horse.getSoundSource(), 1.0F, 1.0F, false);
         }
     }
-    public static boolean canAirStep(AbstractHorse horse, Vec3 movement) {
-        return horse.isAlive() && !horse.onGround() && movement.y <= 0
-                && movement.horizontalDistanceSqr() > 1.0E-8
-                && horse.getControllingPassenger() instanceof Player rider && rider.zza > 0
-                && !horse.isInWaterOrBubble() && !horse.isInLava() && level(horse) > 0;
-    }
-
     // Called after vanilla acceleration, before collision-aware movement. Never changes vertical velocity.
     public static void preserveDownhillSpeed(AbstractHorse horse) {
         RideState state = STATES.get(horse);
@@ -170,7 +163,7 @@ public final class MomentumEvents {
             var path = horse.getBoundingBox().deflate(1.0E-4)
                     .expandTowards(preserved.x, 0, preserved.z);
             Vec3 resolved = ((MomentumCollisionAccess) horse).vr$previewCollision(preserved);
-            boolean safeStep = canAirStep(horse, preserved)
+            boolean safeStep = HighStepEvents.canAirStep(horse, preserved)
                     && Math.abs(resolved.x - preserved.x) < 1.0E-6
                     && Math.abs(resolved.z - preserved.z) < 1.0E-6
                     && resolved.y > preserved.y;
