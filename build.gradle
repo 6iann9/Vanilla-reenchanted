@@ -28,6 +28,11 @@ sourceSets.main.resources {
 
 repositories {
     maven {
+        name = 'CurseMaven'
+        url = 'https://cursemaven.com'
+        content { includeGroup 'curse.maven' }
+    }
+    maven {
         name = 'PlayerAnimationLibrary'
         url = 'https://repo.redlance.org/public'
         content { includeGroup 'com.zigythebird.playeranim' }
@@ -127,6 +132,7 @@ configurations {
 }
 
 dependencies {
+    implementation 'curse.maven:aaa-particles-979809:8995061' // NeoForge 1.21.1, AAA Particles 2.3.1
     // PAL contains its core classes and nested support libraries. Bundle the mod once.
     jarJar(implementation('com.zigythebird.playeranim:PlayerAnimationLibNeo')) {
         version {

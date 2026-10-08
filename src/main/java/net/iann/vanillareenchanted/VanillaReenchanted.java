@@ -78,6 +78,9 @@ public class VanillaReenchanted {
         NeoForge.EVENT_BUS.register(net.iann.vanillareenchanted.event.MomentumEvents.class);
         NeoForge.EVENT_BUS.register(net.iann.vanillareenchanted.event.HighStepEvents.class);
         NeoForge.EVENT_BUS.register(net.iann.vanillareenchanted.enchantment.Elusive.class);
+        NeoForge.EVENT_BUS.register(net.iann.vanillareenchanted.enchantment.Bash.class);
+        NeoForge.EVENT_BUS.register(net.iann.vanillareenchanted.enchantment.Updraft.class);
+        NeoForge.EVENT_BUS.register(net.iann.vanillareenchanted.enchantment.Horsekeeper.class);
         NeoForge.EVENT_BUS.register(net.iann.vanillareenchanted.event.SoulSpeedEvents.class);
         NeoForge.EVENT_BUS.register(net.iann.vanillareenchanted.event.RiptideEvents.class);
         NeoForge.EVENT_BUS.register(net.iann.vanillareenchanted.event.ChannelingEvents.class);
@@ -86,6 +89,7 @@ public class VanillaReenchanted {
             modEventBus.addListener(ClientParticleEvents::registerParticleProviders);
             modEventBus.addListener(ProtectionShieldHud::register);
             modEventBus.addListener(net.iann.vanillareenchanted.client.EchoingEdgeHud::register);
+            modEventBus.addListener(net.iann.vanillareenchanted.client.UpdraftClient::register);
         }
 
         modContainer.registerConfig(ModConfig.Type.COMMON, VRConfig.SPEC);

@@ -27,7 +27,6 @@ public final class MomentumEvents {
     public static final double MAX_DOWNHILL_DROP = 1.25;
     public static final int MAX_DOWNHILL_TICKS = 8;
     public static final int MOVEMENT_GRACE_TICKS = 10;
-    public static final int COLLISION_RECOVERY_TICKS = 10;
     private static final Map<AbstractHorse, RideState> STATES = java.util.Collections.synchronizedMap(new WeakHashMap<>());
     private static final class RideState {
         final MomentumState charge = new MomentumState();
@@ -36,7 +35,6 @@ public final class MomentumEvents {
         int idleTicks = MOVEMENT_GRACE_TICKS;
         double groundSpeed;
         boolean preserveSpeed;
-        int recoveryTicks;
         int airborneTicks;
         boolean synced;
         boolean authoritativeActive;
@@ -83,10 +81,8 @@ public final class MomentumEvents {
         // Vehicle position packets need not arrive once per server tick. A brief gap must not
         // erase two seconds of charge. A held wall still cancels after the short movement grace period.
         state.idleTicks = moving ? 0 : Math.min(MOVEMENT_GRACE_TICKS, state.idleTicks + 1);
-        boolean recovering = state.recoveryTicks > 0;
-        if (recovering) state.recoveryTicks--;
         boolean eligible = input.z > 0 && Math.abs(input.x) < 0.1
-                && (recovering || state.idleTicks < MOVEMENT_GRACE_TICKS)
+                && state.idleTicks < MOVEMENT_GRACE_TICKS
                 && !horse.isInWaterOrBubble() && !horse.isInLava();
         boolean wasActive = state.charge.active();
         boolean active;
@@ -107,7 +103,7 @@ public final class MomentumEvents {
             }
         }
         // Downhill preservation is independent of straight-line charge and steering.
-        state.preserveSpeed = !recovering && input.z > 0 && !horse.isInWaterOrBubble() && !horse.isInLava();
+        state.preserveSpeed = input.z > 0 && !horse.isInWaterOrBubble() && !horse.isInLava();
         if (!state.preserveSpeed) state.groundSpeed = 0;
         var speed = horse.getAttribute(Attributes.MOVEMENT_SPEED);
         var potion = speed.getModifier(SPEED);
@@ -169,25 +165,9 @@ public final class MomentumEvents {
                     && resolved.y > preserved.y;
             if (!horse.level().noCollision(horse, path) && !safeStep) {
                 state.groundSpeed = 0;
-                state.recoveryTicks = COLLISION_RECOVERY_TICKS;
                 return;
             }
             horse.setDeltaMovement(preserved);
         }
-    }
-    /** Discard rejected horizontal movement instead of replaying it after a server correction. */
-    public static void onVehicleCorrection(AbstractHorse horse) {
-        RideState state = STATES.get(horse);
-        if (state == null || level(horse) == 0) return;
-        state.groundSpeed = 0;
-        state.airborneTicks = 0;
-        state.preserveSpeed = false;
-        state.recoveryTicks = COLLISION_RECOVERY_TICKS;
-        // Recovery discards downhill carry, not the earned speed bonus. Steering and
-        // forward-input checks continue normally during the brief recovery window.
-        state.lastPosition = horse.position();
-        state.idleTicks = 0;
-        Vec3 movement = horse.getDeltaMovement();
-        horse.setDeltaMovement(0, movement.y, 0);
     }
 }

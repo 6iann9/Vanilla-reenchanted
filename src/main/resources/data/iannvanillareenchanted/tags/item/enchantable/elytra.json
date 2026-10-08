@@ -1,0 +1,4 @@
+{
+  "replace": false,
+  "values": ["minecraft:elytra", { "id": "#c:elytras", "required": false }]
+}

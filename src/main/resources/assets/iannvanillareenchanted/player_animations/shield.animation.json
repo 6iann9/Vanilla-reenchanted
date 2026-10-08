@@ -1,0 +1,52 @@
+{
+	"format_version": "1.8.0",
+	"animations": {
+		"shield_bash": {
+			"loop": "hold_on_last_frame",
+			"animation_length": 0.2083,
+			"bones": {
+				"left_arm": {
+					"rotation": {
+						"0.0": {
+							"vector": [-54, "30", 0]
+						},
+						"0.2083": {
+							"vector": [-119.8071, -29.5399, 1.3702],
+							"easing": "easeInElastic",
+							"easingArgs": [1]
+						}
+					},
+					"position": {
+						"0.0": {
+							"vector": [0, 0, 0]
+						},
+						"0.2083": {
+							"vector": [0, 0, -1],
+							"easing": "easeInElastic"
+						}
+					}
+				},
+				"left_item": {
+					"rotation": {
+						"0.0": {
+							"vector": [-19.0502, 29.6985, 53.7652]
+						},
+						"0.2083": {
+							"vector": [0.6877, 16.6646, 61.6118],
+							"easing": "linear"
+						}
+					},
+					"position": {
+						"0.0": {
+							"vector": [-3.54808, 0.35278, -0.23811]
+						},
+						"0.2083": {
+							"vector": [-3.16606, -0.33833, 0.88604],
+							"easing": "linear"
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -25,5 +25,6 @@ public class ExampleModClient {
     @SubscribeEvent
     static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(WindUpAnimations::register);
+        event.enqueueWork(net.iann.vanillareenchanted.client.BashAnimations::register);
     }
 }

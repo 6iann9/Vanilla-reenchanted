@@ -15,6 +15,11 @@ public class ModParticles {
     public static final Supplier<SimpleParticleType> SWEEP_SLASH =
             PARTICLES.register("sweep_slash", () -> new SimpleParticleType(false));
 
+    public static final Supplier<SimpleParticleType> UPDRAFT_WIND =
+            PARTICLES.register("updraft_wind", () -> new SimpleParticleType(false));
+    public static final Supplier<SimpleParticleType> UPDRAFT_BURST =
+            PARTICLES.register("updraft_burst", () -> new SimpleParticleType(false));
+
     public static final Supplier<SimpleParticleType> ECHO_IMPACT_RING =
             PARTICLES.register("echo_impact_ring", () -> new SimpleParticleType(false));
 

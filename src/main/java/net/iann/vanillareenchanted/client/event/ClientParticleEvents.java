@@ -6,6 +6,8 @@ import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
 
 public class ClientParticleEvents {
     public static void registerParticleProviders(RegisterParticleProvidersEvent event) {
+        event.registerSpriteSet(ModParticles.UPDRAFT_WIND.get(), sprites -> new net.iann.vanillareenchanted.client.particle.UpdraftParticle.Provider(sprites, false));
+        event.registerSpriteSet(ModParticles.UPDRAFT_BURST.get(), sprites -> new net.iann.vanillareenchanted.client.particle.UpdraftParticle.Provider(sprites, true));
         event.registerSpriteSet(ModParticles.SWEEP_SLASH.get(), net.iann.vanillareenchanted.client.particle.SweepSlashParticle.Provider::new);
         event.registerSpriteSet(ModParticles.ECHO_IMPACT_RING.get(), net.iann.vanillareenchanted.client.particle.EchoImpactRingParticle.Provider::new);
         event.registerSpriteSet(

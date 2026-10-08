@@ -1,0 +1,4 @@
+{
+  "replace": false,
+  "values": ["minecraft:shield", { "id": "#c:tools/shield", "required": false }]
+}

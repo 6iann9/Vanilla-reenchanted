@@ -1,6 +1,8 @@
 package net.iann.vanillareenchanted.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.iann.vanillareenchanted.event.RiptideEvents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
@@ -17,6 +19,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(TridentItem.class)
 public abstract class RiptideUseMixin {
+    private static final double GLIDING_BOOST_MULTIPLIER = 0.25;
+    private static final double DRY_BOOST_MULTIPLIER = 0.8;
+
+    @WrapOperation(method = "releaseUsing", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/world/entity/player/Player;push(DDD)V"))
+    private void vr$scaleRiptideBoost(Player player, double x, double y, double z, Operation<Void> original) {
+        // Scale only the launch impulse, preserving momentum already present before release.
+        // Rain allows Riptide use but does not provide the full underwater boost.
+        double multiplier = player.isFallFlying() ? GLIDING_BOOST_MULTIPLIER
+                : player.isInWaterOrBubble() ? 1.0 : DRY_BOOST_MULTIPLIER;
+        original.call(player, x * multiplier, y * multiplier, z * multiplier);
+    }
+
     // Vanilla checks this both when charging starts and when the trident is released.
     // Only bypass those activation checks; actual water state still controls cooldown speed.
     @ModifyExpressionValue(method = {"use", "releaseUsing"}, at = @At(value = "INVOKE",

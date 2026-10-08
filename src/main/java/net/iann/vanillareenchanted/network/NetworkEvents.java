@@ -9,6 +9,12 @@ public class NetworkEvents {
 
     public static void registerPayloads(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar registrar = event.registrar(VanillaReenchanted.MODID);
+        registrar.playToClient(HorsekeeperEffectPayload.TYPE, HorsekeeperEffectPayload.STREAM_CODEC, HorsekeeperEffectPayload::handle);
+        registrar.playToServer(UpdraftPayload.TYPE, UpdraftPayload.STREAM_CODEC, UpdraftPayload::handle);
+        registrar.playToClient(SyncUpdraftPayload.TYPE, SyncUpdraftPayload.STREAM_CODEC, SyncUpdraftPayload::handle);
+        registrar.playToClient(UpdraftEffectPayload.TYPE, UpdraftEffectPayload.STREAM_CODEC, UpdraftEffectPayload::handle);
+        registrar.playToServer(BashPayload.TYPE, BashPayload.STREAM_CODEC, BashPayload::handle);
+        registrar.playToClient(SyncBashPayload.TYPE, SyncBashPayload.STREAM_CODEC, SyncBashPayload::handle);
         registrar.playToServer(SweepMissPayload.TYPE, SweepMissPayload.STREAM_CODEC, SweepMissPayload::handle);
         registrar.playToClient(SyncChannelingPayload.TYPE, SyncChannelingPayload.STREAM_CODEC, SyncChannelingPayload::handle);
         registrar.playToClient(SyncRiptidePayload.TYPE, SyncRiptidePayload.STREAM_CODEC, SyncRiptidePayload::handle);

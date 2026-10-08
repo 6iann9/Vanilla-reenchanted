@@ -7,5 +7,14 @@
   "max_cost": { "base": 45, "per_level_above_first": 0 },
   "anvil_cost": 4,
   "slots": ["body"],
-  "effects": {}
+  "effects": {
+    "minecraft:attributes": [
+      {
+        "id": "iannvanillareenchanted:elusive_safe_fall",
+        "attribute": "minecraft:generic.safe_fall_distance",
+        "amount": 10.0,
+        "operation": "add_value"
+      }
+    ]
+  }
 }

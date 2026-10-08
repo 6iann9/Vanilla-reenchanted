@@ -43,7 +43,7 @@ public final class WindUpClient {
 
     private static void begin(Minecraft mc) {
         if (mc.player != null) WindUp.checkEquipCooldown(mc.player);
-        if (charging || mc.player == null || mc.gameMode == null || !mc.player.isAlive()
+        if (charging || mc.player == null || BashAnimations.busy(mc.player) || mc.gameMode == null || !mc.player.isAlive()
                 || mc.player.isSpectator() || mc.player.isUsingItem()
                 || WindUp.level(mc.player.getMainHandItem()) == 0
                 || WindUp.isCoolingDown(mc.player) || mc.player.getCooldowns().isOnCooldown(mc.player.getMainHandItem().getItem())) return;

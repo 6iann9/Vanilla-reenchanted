@@ -3,6 +3,8 @@
   "package": "net.iann.vanillareenchanted.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "HorsekeeperHornMixin",
+    "HorseMovementValidationMixin",
     "ElusiveHorseMixin",
     "ElusiveFluidMixin",
     "ElusiveBlockCollisionMixin",
@@ -38,6 +40,10 @@
     "SweepDamageAccess"
   ],
   "client": [
+    "EffectLightTextureAccess",
+    "BashInputMixin",
+    "BashArmPoseMixin",
+    "BashShieldModelMixin",
     "SweepMissInputMixin",
     "TridentCooldownOverlayMixin",
     "AnvilScreenMixin",
@@ -46,7 +52,6 @@
     "WindBurstOverlayMixin",
     "WindUpMovementMixin",
     "HorseArmorLayerMixin",
-    "MomentumVehicleCorrectionMixin",
     "EnchantmentDescriptionsMixin"
   ],
   "server": [],
