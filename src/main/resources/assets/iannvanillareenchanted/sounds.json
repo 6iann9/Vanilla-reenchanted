@@ -1,4 +1,10 @@
 {
+  "updraft_tornado": {
+    "subtitle": "subtitles.iannvanillareenchanted.updraft_tornado",
+    "sounds": [
+      "iannvanillareenchanted:enchantment/updraft_tornado"
+    ]
+  },
   "momentum_proc": {
     "subtitle": "subtitles.iannvanillareenchanted.momentum_proc",
     "sounds": [

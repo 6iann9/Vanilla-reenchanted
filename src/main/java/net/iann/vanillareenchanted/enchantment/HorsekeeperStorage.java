@@ -33,6 +33,15 @@ public final class HorsekeeperStorage extends SavedData {
         return horse == null ? null : horse.copy();
     }
 
+    public boolean isStored(UUID id) { return horses.containsKey(id); }
+
+    public String storedName(UUID id, HolderLookup.Provider registries) {
+        CompoundTag horse = horses.get(id);
+        if (horse == null || !horse.contains("CustomName", Tag.TAG_STRING)) return "";
+        var name = net.minecraft.network.chat.Component.Serializer.fromJson(horse.getString("CustomName"), registries);
+        return name == null ? "" : name.getString();
+    }
+
     public void store(UUID id, CompoundTag horse) {
         horses.put(id, horse.copy());
         setDirty();

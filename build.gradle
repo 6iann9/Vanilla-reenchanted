@@ -28,6 +28,15 @@ sourceSets.main.resources {
 
 repositories {
     maven {
+        name = 'LowDragMC'
+        url = 'https://maven.firstdark.dev/snapshots'
+        content {
+            includeGroup 'com.lowdragmc.photon'
+            includeGroup 'com.lowdragmc.ldlib2'
+            includeGroup 'com.lowdragmc.kilagraph'
+        }
+    }
+    maven {
         name = 'CurseMaven'
         url = 'https://cursemaven.com'
         content { includeGroup 'curse.maven' }
@@ -132,6 +141,17 @@ configurations {
 }
 
 dependencies {
+    // Photon editor/API for gradual effect migration. AAA still runs existing effects.
+    implementation("com.lowdragmc.photon:photon-neoforge-${minecraft_version}:${photon_version}") {
+        transitive = false
+    }
+    // The all artifact already bundles Kotlin, Yoga and Taffy; avoid duplicate loose libraries.
+    implementation("com.lowdragmc.ldlib2:ldlib2-neoforge-${minecraft_version}:${ldlib2_version}:all") {
+        transitive = false
+    }
+    implementation("com.lowdragmc.kilagraph:kilagraph-neoforge-${minecraft_version}:${kilagraph_version}") {
+        transitive = false
+    }
     implementation 'curse.maven:aaa-particles-979809:8995061' // NeoForge 1.21.1, AAA Particles 2.3.1
     // PAL contains its core classes and nested support libraries. Bundle the mod once.
     jarJar(implementation('com.zigythebird.playeranim:PlayerAnimationLibNeo')) {

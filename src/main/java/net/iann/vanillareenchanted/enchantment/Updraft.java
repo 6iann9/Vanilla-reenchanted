@@ -7,7 +7,6 @@ import net.iann.vanillareenchanted.network.UpdraftEffectPayload;
 import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
@@ -151,7 +150,7 @@ public final class Updraft {
         player.getPersistentData().putBoolean(WAITING, true);
         PacketDistributor.sendToPlayersTrackingEntityAndSelf(player, new UpdraftEffectPayload(
                 player.getId(), UpdraftEffectPayload.JUMP, player.getX(), player.getY(), player.getZ()));
-        player.serverLevel().playSound(null, player.blockPosition(), SoundEvents.WIND_CHARGE_BURST.value(), player.getSoundSource(), 0.8F, 1.2F);
+        // The Photon jump timeline supplies the launch sound.
         sync(player, s);
     }
 

@@ -1,10 +1,12 @@
 package net.iann.vanillareenchanted.enchantment;
 
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 import java.util.WeakHashMap;
 import net.iann.vanillareenchanted.network.HorsekeeperEffectPayload;
 import net.minecraft.core.BlockPos;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -13,6 +15,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.animal.horse.AbstractHorse;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.InstrumentItem;
@@ -47,6 +50,50 @@ public final class Horsekeeper {
         return tag.hasUUID("Horse") ? tag.getUUID("Horse") : null;
     }
 
+    public static void appendTooltip(ItemStack horn, List<Component> tooltip) {
+        if (boundHorse(horn) == null) return;
+        CompoundTag binding = horn.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getCompound(BINDING);
+        String name = binding.getString("Name");
+        tooltip.add(Component.translatable("tooltip.iannvanillareenchanted.horsekeeper.bound",
+                name.isEmpty() ? Component.translatable("entity.minecraft.horse") : Component.literal(name)).withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.translatable("tooltip.iannvanillareenchanted.horsekeeper.stored",
+                Component.translatable(binding.getBoolean("Stored") ? "gui.yes" : "gui.no")).withStyle(ChatFormatting.GRAY));
+    }
+
+    private static void updateTooltip(ItemStack horn, String name, boolean stored) {
+        CompoundTag binding = horn.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getCompound(BINDING);
+        if (binding.contains("Stored") && binding.getBoolean("Stored") == stored && binding.getString("Name").equals(name)) return;
+        CustomData.update(DataComponents.CUSTOM_DATA, horn, data -> {
+            CompoundTag updated = data.getCompound(BINDING);
+            updated.putString("Name", name);
+            updated.putBoolean("Stored", stored);
+            data.put(BINDING, updated);
+        });
+    }
+
+    private static String horseName(AbstractHorse horse) {
+        return horse.hasCustomName() ? horse.getCustomName().getString() : "";
+    }
+
+    private static void unbind(ServerPlayer player, ItemStack horn) {
+        UUID id = boundHorse(horn);
+        if (id == null) return;
+        if (HorsekeeperStorage.get(player.server).isStored(id)) {
+            message(player, "release_first");
+            return;
+        }
+        CustomData.update(DataComponents.CUSTOM_DATA, horn, data -> data.remove(BINDING));
+        message(player, "unbound_success");
+    }
+
+    @SubscribeEvent
+    public static void crouchUse(PlayerInteractEvent.RightClickItem event) {
+        if (!event.getEntity().isShiftKeyDown() || !enchanted(event.getItemStack()) || boundHorse(event.getItemStack()) == null) return;
+        event.setCanceled(true);
+        event.setCancellationResult(InteractionResult.SUCCESS);
+        if (event.getEntity() instanceof ServerPlayer player && !player.isSpectator()) unbind(player, event.getItemStack());
+    }
+
     @SubscribeEvent
     public static void interact(PlayerInteractEvent.EntityInteract event) { bind(event); }
 
@@ -72,6 +119,10 @@ public final class Horsekeeper {
             return;
         }
         UUID old = boundHorse(horn);
+        if (horse.getUUID().equals(old)) {
+            unbind(server, horn);
+            return;
+        }
         if (old != null && HorsekeeperStorage.get(server.server).horse(old) != null) {
             message(server, "release_first");
             return;
@@ -79,6 +130,8 @@ public final class Horsekeeper {
         CustomData.update(DataComponents.CUSTOM_DATA, horn, data -> {
             CompoundTag binding = new CompoundTag();
             binding.putUUID("Horse", horse.getUUID());
+            binding.putString("Name", horseName(horse));
+            binding.putBoolean("Stored", false);
             data.put(BINDING, binding);
         });
         server.displayClientMessage(Component.translatable("message.iannvanillareenchanted.horsekeeper.bound", horse.getDisplayName()), true);
@@ -108,7 +161,8 @@ public final class Horsekeeper {
         }
         var entity = player.serverLevel().getEntity(id);
         if (!(entity instanceof AbstractHorse horse) || !horse.isAlive()
-                || player.distanceToSqr(horse) > STORE_RANGE * STORE_RANGE || !player.hasLineOfSight(horse)) {
+                || player.getBoundingBox().getCenter().distanceToSqr(horse.getBoundingBox().getCenter())
+                        > STORE_RANGE * STORE_RANGE) {
             message(player, "not_nearby"); return;
         }
         if (!horse.isTamed() || !player.getUUID().equals(horse.getOwnerUUID())) { message(player, "not_owned"); return; }
@@ -116,6 +170,7 @@ public final class Horsekeeper {
         CompoundTag tag = new CompoundTag();
         if (!horse.save(tag)) { message(player, "restore_failed"); return; }
         storage.store(id, tag);
+        updateTooltip(horn, horseName(horse), true);
         effect(player.serverLevel(), horse.position(), HorsekeeperEffectPayload.DESPAWN);
         horse.discard();
     }
@@ -128,6 +183,14 @@ public final class Horsekeeper {
     @SubscribeEvent
     public static void tick(PlayerTickEvent.Post event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        // Refresh legacy horns, renamed horses and copied horns from authoritative storage.
+        // Only changed metadata is written, so normal inventory sync handles the tooltip.
+        if (player.tickCount % 20 == 0) {
+            for (var slot : player.containerMenu.slots) refreshTooltip(player, slot.getItem());
+            for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+                refreshTooltip(player, player.getInventory().getItem(slot));
+            }
+        }
         Summon summon = PENDING.get(player);
         if (summon == null) return;
         if (!player.isAlive() || player.isSpectator() || player.serverLevel() != summon.level()
@@ -154,6 +217,7 @@ public final class Horsekeeper {
         // Keep the stored copy if another mod rejects spawning the entity.
         if (!summon.level().addFreshEntity(horse)) { message(player, "restore_failed"); return; }
         storage.release(summon.horse());
+        updateTooltip(summon.horn(), horseName(horse), false);
         effect(summon.level(), summon.position(), HorsekeeperEffectPayload.SPAWN);
     }
 
@@ -162,10 +226,29 @@ public final class Horsekeeper {
         return entity instanceof AbstractHorse horse && horse.isAlive() ? horse : null;
     }
 
+    private static void refreshTooltip(ServerPlayer player, ItemStack horn) {
+        if (!(horn.getItem() instanceof InstrumentItem)) return;
+        UUID id = boundHorse(horn);
+        if (id == null) return;
+        HorsekeeperStorage storage = HorsekeeperStorage.get(player.server);
+        if (storage.isStored(id)) {
+            updateTooltip(horn, storage.storedName(id, player.registryAccess()), true);
+            return;
+        }
+        String name = horn.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getCompound(BINDING).getString("Name");
+        for (ServerLevel level : player.server.getAllLevels()) {
+            if (level.getEntity(id) instanceof AbstractHorse horse) {
+                name = horseName(horse);
+                break;
+            }
+        }
+        updateTooltip(horn, name, false);
+    }
+
     private static Vec3 findPosition(ServerPlayer player, AbstractHorse horse) {
         ServerLevel level = player.serverLevel();
         double facing = Math.toRadians(player.getYRot());
-        for (double radius : new double[]{1.5, 2.0, 1.0}) {
+        for (double radius : new double[]{2.0, 1.75, 1.5, 1.25, 1.0}) {
             for (int index = 0; index < 16; index++) {
                 double angle = facing + index * Math.PI / 8.0;
                 double x = player.getX() - Math.sin(angle) * radius;
@@ -192,15 +275,15 @@ public final class Horsekeeper {
         AABB box = horse.getBoundingBox();
         if (!level.hasChunksAt(BlockPos.containing(box.minX, box.minY - 0.1, box.minZ),
                 BlockPos.containing(box.maxX, box.maxY, box.maxZ))
-                || !level.getWorldBorder().isWithinBounds(box) || !level.noCollision(horse, box)
-                || !level.getEntities(horse, box, entity -> entity.isAlive() && !entity.isSpectator()).isEmpty()) return false;
-        // Require support under all four corners, rather than balancing a horse over an edge.
-        for (double x : new double[]{box.minX + 0.1, box.maxX - 0.1}) {
-            for (double z : new double[]{box.minZ + 0.1, box.maxZ - 0.1}) {
-                if (level.noCollision(horse, new AABB(x - 0.01, box.minY - 0.08, z - 0.01,
-                        x + 0.01, box.minY, z + 0.01))) return false;
-            }
-        }
+                || !level.getWorldBorder().isWithinBounds(box) || !level.noCollision(horse, box.deflate(1.0E-5))
+                || !level.getEntitiesOfClass(LivingEntity.class, box,
+                        entity -> entity.isAlive() && !entity.isSpectator()).isEmpty()) return false;
+        // Collision shapes allow harmless grass and flowers. Require ground under the
+        // horse's center, without demanding a perfectly level platform at every corner.
+        // Use block collisions here so another entity cannot act as the ground.
+        AABB support = new AABB(position.x - 0.2, box.minY - 0.08, position.z - 0.2,
+                position.x + 0.2, box.minY, position.z + 0.2);
+        if (!level.getBlockCollisions(horse, support).iterator().hasNext()) return false;
         for (BlockPos pos : BlockPos.betweenClosed(BlockPos.containing(box.minX, box.minY - 0.08, box.minZ),
                 BlockPos.containing(box.maxX, box.maxY, box.maxZ))) {
             var state = level.getBlockState(pos);

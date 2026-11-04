@@ -10,6 +10,9 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public final class ModSounds {
     public static final DeferredRegister<SoundEvent> SOUNDS =
             DeferredRegister.create(Registries.SOUND_EVENT, VanillaReenchanted.MODID);
+    public static final DeferredHolder<SoundEvent, SoundEvent> UPDRAFT_TORNADO = SOUNDS.register(
+            "updraft_tornado", () -> SoundEvent.createVariableRangeEvent(
+                    ResourceLocation.fromNamespaceAndPath(VanillaReenchanted.MODID, "updraft_tornado")));
     public static final DeferredHolder<SoundEvent, SoundEvent> MOMENTUM_PROC = SOUNDS.register(
             "momentum_proc", () -> SoundEvent.createVariableRangeEvent(
                     ResourceLocation.fromNamespaceAndPath(VanillaReenchanted.MODID, "momentum_proc")));
